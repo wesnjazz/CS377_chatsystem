@@ -58,7 +58,7 @@ PART 2: PULL REQUEST (Merge your work into the main flow)
 8. <b>Create Pull Request</b>
 </pre>
 
-### After Pull Request
+### After Pull Request / You want [your branch] up-to-date with the develop branch
 <pre>
 Merge [develop] branch into your branch
 1. <b>git checkout develop</b>
