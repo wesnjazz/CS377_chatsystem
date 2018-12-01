@@ -64,7 +64,7 @@ Merge [develop] branch into your branch
 5. <b>git merge develop</b> (Merge develop branch into your branch)
 6. <b>git push</b>
    push again to make your change(merging) being published into github.
-   Now you are up-to-date.
+   Now you are up-to-date and ready to develop next level!
 </pre>
 
 ### 
