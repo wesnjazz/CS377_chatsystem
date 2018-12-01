@@ -52,7 +52,9 @@ Part 2: UPDATE
 6. <b>git checkout [mybranch]</b>
 7. <b>git pull</b> (Update your branch)
 8. <b>git merge develop</b> (Merge develop branch into your branch)
-9. Now you are up-to-date.
+9. <b>git push</b>
+   push again to make your change(merging) being published into github.
+   Now you are up-to-date.
 </pre>
 
 ### 
