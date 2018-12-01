@@ -52,14 +52,17 @@ PARt 2: PULL REQUEST (Merge your work into the main flow)
 6. <b>New pull request</b>
 7. <b>Base: Develop <- Compare:your branch</b>
 8. <b>Create Pull Request</b>
+</pre>
 
-Part 2: UPDATE
-4. <b>git checkout develop</b>
-5. <b>git pull</b> (Update your local develop branch up-to-date with github)
-6. <b>git checkout [mybranch]</b>
-7. <b>git pull</b> (Update your branch)
-8. <b>git merge develop</b> (Merge develop branch into your branch)
-9. <b>git push</b>
+### After Pull Request
+<pre>
+Merge [develop] branch into your branch
+1. <b>git checkout develop</b>
+2. <b>git pull</b> (Update your local develop branch up-to-date with github)
+3. <b>git checkout [mybranch]</b>
+4. <b>git pull</b> (Update your branch)
+5. <b>git merge develop</b> (Merge develop branch into your branch)
+6. <b>git push</b>
    push again to make your change(merging) being published into github.
    Now you are up-to-date.
 </pre>
