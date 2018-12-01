@@ -46,7 +46,10 @@ Part 1: SAVE YOUR JOB
 3. <b>git push</b>
    this will sync your local and github
 
-PARt 2: PULL REQUEST (Merge your work into the main flow)
+At this point, you can go either part 2 to update your work into main flow, or work on more jobs.
+If you feel your work is very small, you can go work on more jobs, just make sure to save your jobs every time.
+
+PART 2: PULL REQUEST (Merge your work into the main flow)
 4. <b>Go to github page https://github.com/wesnjazz/CS377_chatsystem</b>
 5. <b>Select your branch</b>
 6. <b>New pull request</b>
