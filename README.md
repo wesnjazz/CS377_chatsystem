@@ -11,7 +11,7 @@
 4. check your git status
         <b>sh> git status</b>
 5. check branches that already made. You will see there are individual branches for each member.
-    -You need to work on only your branch.
+   You need to work on only your branch.
         <b>sh> git branch -a</b>
 6. checkout to your branch
         <b>sh> git checkout shipeng</b>   or
@@ -40,7 +40,8 @@ There are five branches.
 Part 1: SAVE YOUR JOB
 1. <b>git add .</b>
    this will add all your changed files to be tracked.
-2. <b>git commit -m "small description what you did"</b> (e.g., add a helpfer function, fix a segfault bug, etc.)
+2. <b>git commit -m "small description what you did"</b> 
+   ex) git commit -m "added a helpfer function for socket binding, fixed a segfault bug"
    this will save/commit your state in your LOCAL git
 3. <b>git push</b>
    this will sync your local and github
