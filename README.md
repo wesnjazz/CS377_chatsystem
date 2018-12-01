@@ -1,7 +1,7 @@
 # CS377 group project - Chat System
-#### Members: DongWon Park, Shipeng Yu, Ruifeng Zhang
+###### Members: DongWon Park, Shipeng Yu, Ruifeng Zhang
 
-### How to use Git for the project
+## How to use Git for the project
 ### Set up git environment
 <pre>
 1. Create a folder (don't use cloud drive because it is unstable to work with github)
