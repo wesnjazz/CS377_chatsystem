@@ -21,11 +21,12 @@
 
 ### Branches
 <pre>
-There are five branches.
+There are four branches.
 [shipeng, ruifeng, dpark] : These are individual branch that we work on separately.
                             Do your work only on your branch.
 [master] : The branch we will merge our work in one place as we develop our project.
 <b>Don't ever work on master branch. We should keep this branch stable.</b>
+[backup] : We'll keep the backup into this branch so that we can always go back and never lose our job.
 </pre>
 
 ### When you do your tasks
