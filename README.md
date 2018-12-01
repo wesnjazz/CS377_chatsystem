@@ -3,7 +3,7 @@
 
 ### How to use Git for the project
 ### Set up git environment
-```diff
+<pre>
 1. Create a folder (don't use cloud drive because it is unstable to work with github)
 +2. Download this repository
         <b>sh> git clone https://github.com/wesnjazz/CS377_chatsystem.git</b>
@@ -17,7 +17,7 @@
         <b>sh> git checkout shipeng</b>   or
         <b>sh> git checkout ruifeng</b>
 7. Now you are done with setup.
-```
+</pre>
 
 ### Branches
 <pre>
