@@ -46,6 +46,13 @@ Part 1: SAVE YOUR JOB
 3. <b>git push</b>
    this will sync your local and github
 
+PARt 2: PULL REQUEST (Merge your work into the main flow)
+4. <b>Go to github page. https://github.com/wesnjazz/CS377_chatsystem</b>
+5. <b>Select your branch</b>
+6. <b>New pull request</b>
+7. <b>Base: Develop <- Compare:your branch</b>
+8. <b>Create Pull Request</b>
+
 Part 2: UPDATE
 4. <b>git checkout develop</b>
 5. <b>git pull</b> (Update your local develop branch up-to-date with github)
