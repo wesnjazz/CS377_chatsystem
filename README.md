@@ -22,10 +22,10 @@
 ### Branches
 <pre>
 There are five branches.
-[develop] : The branch we will merge our work in one place as we develop our project. 
-            This branch is made to protect the [master] branch.
-[shipeng, ruifeng, dpark] : These are individual branch that we work on separately. Do your work only on your branch.
-[master] : We will finalize our project to this branch. This branch will be always stable without errors.
+[shipeng, ruifeng, dpark] : These are individual branch that we work on separately.
+                            Do your work only on your branch.
+[master] : The branch we will merge our work in one place as we develop our project.
+<b>Don't ever work on master branch. We should keep this branch stable.</b>
 </pre>
 
 ### When you do your tasks
@@ -54,18 +54,18 @@ PART 2: PULL REQUEST (Merge your work into the main flow)
 4. <b>Go to github page https://github.com/wesnjazz/CS377_chatsystem</b>
 5. <b>Select your branch</b>
 6. <b>New pull request</b>
-7. <b>Base: Develop <- Compare:your branch</b>
+7. <b>Base: [Master] <- Compare:[your branch]</b>
 8. <b>Create Pull Request</b>
 </pre>
 
-### After Pull Request / You want [your branch] up-to-date with the develop branch
+### After Pull Request / You want [your branch] up-to-date with the master branch
 <pre>
-Merge [develop] branch into your branch
-1. <b>git checkout develop</b>
-2. <b>git pull</b> (Update your local develop branch up-to-date with github)
+Merge [master] branch into your branch
+1. <b>git checkout master</b>
+2. <b>git pull</b> (Update your local master branch up-to-date with github)
 3. <b>git checkout [mybranch]</b>
 4. <b>git pull</b> (Update your branch)
-5. <b>git merge develop</b> (Merge develop branch into your branch)
+5. <b>git merge master</b> (Merge master branch into your branch)
 6. <b>git push</b>
    Here you push again to make your change(merging) being published into github.
    Now you are up-to-date with the main work flow and ready to develop next level!
