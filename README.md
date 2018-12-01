@@ -3,21 +3,21 @@
 
 ### How to use Git for the project
 ### Set up git environment
-<pre>
+```diff
 1. Create a folder (don't use cloud drive because it is unstable to work with github)
-2. Download this repository
++2. Download this repository
         <b>sh> git clone https://github.com/wesnjazz/CS377_chatsystem.git</b>
 3. go to CS377_chatsystem folder.
 4. check your git status
         <b>sh> git status</b>
 5. check branches that already made. You will see there are individual branches for each member.
-    <b><span style="color:blue">You need to work on only your branch.</b></span>
+    -You need to work on only your branch.
         <b>sh> git branch -a</b>
 6. checkout to your branch
         <b>sh> git checkout shipeng</b>   or
         <b>sh> git checkout ruifeng</b>
 7. Now you are done with setup.
-</pre>
+```
 
 ### Branches
 <pre>
