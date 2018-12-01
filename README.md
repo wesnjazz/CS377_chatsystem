@@ -46,7 +46,7 @@ Part 1: SAVE YOUR JOB
 3. <b>git push</b>
    this will sync your local and github
 
-At this point, you can go either part 2 to update your work into main flow, 
+At this point, you can go either part 2 to request to put your work into main flow, 
 or go back to work on more jobs if you feel your change was small.
 Just make sure to save your jobs every time by doing part 1.
 
