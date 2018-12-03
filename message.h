@@ -8,9 +8,8 @@
 using namespace std;
 
 typedef struct Message{
-	string user_name;
+	string message;
 	int user_id;
-	int room_id;
 } Message;
 
 #endif
