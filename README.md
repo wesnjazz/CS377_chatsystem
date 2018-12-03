@@ -1,6 +1,27 @@
 # CS377 group project - Chat System
 ###### Members: DongWon Park, Shipeng Yu, Ruifeng Zhang
 
+## Structs
+### ROOM struct
+    typedef struct Room{
+        string room_name;
+        int room_id;
+        User **user_list;
+    } Room;
+### USER struct
+    typedef struct User{
+        string user_name;
+        int user_id;
+        int room_id;
+    } User;
+### MESSAGE struct
+    typedef struct Message{
+        string message_str;
+        int room_id;
+    } Message;
+    
+
+<br><br><br>
 ## How to use Git for the project
 ### Set up git environment
 <pre>
