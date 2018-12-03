@@ -6,7 +6,7 @@
 <pre>
 1. Create a folder (don't use cloud drive because it is unstable to work with github)
 2. Download this repository
-        <b>sh> git clone https://github.com/wesnjazz/CS377_chatsystem.git</b>
+        <b>sh> git clone https://www.github.com/wesnjazz/CS377_chatsystem.git</b>
 3. go to CS377_chatsystem folder.
 4. check your git status
         <b>sh> git status</b>
