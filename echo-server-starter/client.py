@@ -39,7 +39,8 @@ def last_list(sock):
 
 
 def ask(prompt=':-p'):
-    return input(f'({prompt}) ')
+    return input('({}) '.format(prompt))
+    # return input(f'({prompt}) ')
 
 
 def prompt_on_last(sock):
