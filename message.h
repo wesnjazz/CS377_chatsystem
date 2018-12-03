@@ -1,5 +1,5 @@
-#ifndef ROOM_H
-#define ROOM_H
+#ifndef MESSAGE_H
+#define MESSAGE_H
 
 #include <string>
 #include "srd_server.h"
@@ -7,10 +7,10 @@
 
 using namespace std;
 
-typedef struct Room{
-	string room_name;
+typedef struct Message{
+	string user_name;
+	int user_id;
 	int room_id;
-	User a;
-} Room;
+} Message;
 
 #endif

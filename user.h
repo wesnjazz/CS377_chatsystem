@@ -3,6 +3,7 @@
 
 #include <string>
 #include "srd_server.h"
+#include "room.h"
 
 using namespace std;
 

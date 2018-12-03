@@ -10,8 +10,9 @@
 #include <unistd.h>
 #include "srd_server.h"
 
-Room *room_list;
-User *user_list;
+Room **room_list;
+User **user_list;
+Message ***msg_list;
 
 /* Simplifies calls to bind(), connect(), and accept() */
 typedef struct sockaddr SA;
