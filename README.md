@@ -17,7 +17,7 @@
 ### MESSAGE struct
     typedef struct Message{
         string message_str;
-        int room_id;
+        int user_id;
     } Message;
     
 
