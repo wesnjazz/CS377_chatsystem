@@ -295,8 +295,20 @@ int send_helplist_message(int connfd) {
 int process_message(int connfd, char *message) {//idk if we can use case switch
   if (is_Command_message(message)) {
     printf("iT IS COMMAND.\n");
-    if(strcmp(message, "\\JOIN nickname room") == 0){
-            printf("%s\n","it is \\JOIN nickname room" );
+    if(strcmp(message, "\\JOIN nickname room") == 0){ 
+      // Checklist:
+      //  if the command starts with JOIN
+      //  if the number of room does not exceed MAX_ROOM_NUM
+      //    change user's name
+      //  else
+      //    return error message
+      //  if the room name exists, 
+      //    join the room
+      //  else
+      //    create a new room with the name
+      //  update user_list of the room
+      //  return success message
+      printf("%s\n","it is \\JOIN nickname room" );
     }
     else if(strcmp(message, "\\ROOMS") == 0){
             printf("%s\n","it is \\ROOMS" );
