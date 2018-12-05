@@ -50,7 +50,7 @@ int main(int argc, char *argv[]){
 		scanf("%s", buffer);
 		send(sockfd, buffer, strlen(buffer), 0);
 
-		if(strcmp(buffer, ":exit") == 0){
+		if(strcmp(buffer, "\\quit") == 0){
 			close(sockfd);
 			printf("[-]Disconnected from server.\n");
 			exit(1);
