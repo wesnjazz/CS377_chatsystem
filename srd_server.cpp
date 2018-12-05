@@ -27,8 +27,8 @@ pthread_mutex_t lock;
 #define LISTENQ 1024
 
 // We will use this as a simple circular buffer of incoming messages.
-
 char message_buf[20][50];
+
 // Initialize the message buffer to empty strings.
 void init_message_buf() {
   int i;
@@ -47,99 +47,38 @@ int send_message(int connfd, char *message) {
   return send(connfd, message, strlen(message), 0);
 }
 
-
-
 // A predicate function to test incoming message.
-int is_Command_message(char *message) { 
-  if(message[0]=='-'){
-    printf("%s\n","it is Command" );
-    return true;
-  }
-  else{
-    return false;
-  }
-
-  // return strncmp(message, "-", 1) == 0;
-   }
+int is_ROOM_message(char *message) { return strncmp(message, "-", 1) == 0; }
 
 int send_ROOM_message(int connfd) {
-  char message[1024] = "ROOM";
-  printf("Sending: %s \n", message);
-
-  return send_message(connfd, message);
-}
-int send_list_message(int connfd) {
-  char message[20 * 50] = "";
-  const char *temp_room_list[2];
-    temp_room_list[0] = "blah";
-    temp_room_list[1] = "hmm";
-  for (int i = 0; i < 2; i++) {
-    if (strcmp(temp_room_list[i], "") == 0) break;//room list
-    strcat(message, temp_room_list[i]);//room list
-    strcat(message, ",");
-  }
-
-  // End the message with a newline and empty. This will ensure that the
-  // bytes are sent out on the wire. Otherwise it will wait for further
-  // output bytes.
-  strcat(message, "\n\0");
+	char message[1024] = "ROOM";
   printf("Sending: %s", message);
 
   return send_message(connfd, message);
 }
 
-int process_message(int connfd, char *message) {//idk if we can use case switch
-  if (is_Command_message(message)) {
+int process_message(int connfd, char *message) {
+  if (is_ROOM_message(message)) {
     printf("Server responding with ROOM response.\n");
-    if(strcmp(message, "-JOIN nickname room") == 0){
-            printf("%s\n","it is -JOIN nickname room" );
-    }
-    else if(strcmp(message, "-ROOMS") == 0){
-            printf("%s\n","it is -ROOMS" );
-            return send_list_message(connfd);
-    }
-    else if(strcmp(message, "-LEAVE") == 0){
-      char message[1024] = "GoodBye";
-      return send_message(connfd, message);
-
-    }
-    else if(strcmp(message, "-WHO") == 0){
-
-    }
-    else if(strcmp(message, "-HELP") == 0){
-
-    }
-    else if(strcmp(message, "-nickname message") == 0){
-
-    }
-    else{
-      char tempMessage[1024] ="command not recognized";
-      strcat(message,tempMessage);
-      printf("%s\n", message );
-      return send_message(connfd,message);
-    }
     return send_ROOM_message(connfd);
   } 
-
-    else {
-      printf("Server responding with echo response.\n");
-      return send_message(connfd, message);
-    }
+  // else {
+  //   printf("Server responding with echo response.\n");
+  //   return send_echo_message(connfd, message);
+  // }
 }
 
 void simple_message(int connfd){
-  size_t n;
-  char message[MAXLINE];
+	size_t n;
+	char message[MAXLINE];
 
-  printf("SIMPLE_MESSAGE\n");
-  while((n=receive_message(connfd, message))>0) {
-     message[n] = '\0';  // null terminate message (for string operations)
-     printf("message is : %s", message);
-    printf("Server received a meesage of %d bytes: %s\n", (int)n, message);
-    n = process_message(connfd, message);
-  }
-
-  printf("SIMPLE_MESSAGE  finish\n");
+	printf("SIMPLE_MESSAGE\n");
+	while((n=receive_message(connfd, message))>0) {
+	   message[n] = '\0';  // null terminate message (for string operations)
+		printf("Server received a meesage of %dbytes: %s\n", (int)n, message);
+		n = process_message(connfd, message);
+	}
+	printf("SIMPLE_MESSAGE  finish\n");
 }
 
 // Helper function to establish an open listening socket on given port.
@@ -221,7 +160,7 @@ int main(int argc, char *argv[]){
     pthread_create(&tid, NULL, thread, connfdp);
   }
 
-  return 0;
+	return 0;
 }
 
 /* thread routine */
