@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "srd_server.h"
+#include "server.h"
 
 Room **room_list;
 User **user_list;
@@ -178,8 +178,9 @@ void simple_message(int connfd){
 
   printf("SIMPLE_MESSAGE\n");
   while((n=receive_message(connfd, message))>0) {
-     message[n] = '\0';  // null terminate message (for string operations)
-     printf("message is : %s", message);
+    printf("message is : %s", message);
+    printf("n:%d\n", (int)n);
+    message[n] = '\0';  // null terminate message (for string operations)
     printf("Server received a meesage of %d bytes: %s\n", (int)n, message);
     n = process_message(connfd, message);
   }

@@ -2,7 +2,7 @@
 #define MESSAGE_H
 
 #include <string>
-#include "srd_server.h"
+#include "server.h"
 #include "user.h"
 
 using namespace std;
