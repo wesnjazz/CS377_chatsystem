@@ -109,10 +109,12 @@ int get_number_of_room_list(){
 int create_room(char *room_name){
   printf("\t[+]creating a room \"%s\".\n", room_name);
   int x = get_number_of_room_list();
+  if (x>=MAX_ROOM_NUM) return -1;
   strcpy((*(room_list[x])).room_name, room_name);
   (*(room_list[x])).room_id = x;
   num_room_list++;
   printf("\tsize of room_list: %d\n", get_number_of_room_list());
+  return num_room_list;
 }
 
 void init_rooms_users_messages(){
@@ -240,6 +242,7 @@ int send_roomlist_message(int connfd){
     strcat(list_buffer, temp); // add room_id chars
     strcat(list_buffer, suffix);  // add suffix
     strcat(list_buffer, (*(room_list[i])).room_name); // add room_name
+    strcat(list_buffer, "\n");
   }
   printf("Sneding: %s\n", list_buffer);
   return send_message(connfd, list_buffer);
@@ -295,7 +298,13 @@ int send_helplist_message(int connfd) {
 int process_message(int connfd, char *message) {//idk if we can use case switch
   if (is_Command_message(message)) {
     printf("iT IS COMMAND.\n");
-    if(strcmp(message, "\\JOIN nickname room") == 0){ 
+    // if(strcmp(message, "\\JOIN nickname room") == 0){ 
+    if(strcmp(message, "\\JOIN") == 0){ 
+      printf("%s\n","it is \\JOIN nickname room" );
+      if(create_room((char *)"Test Room 1") == -1){
+        return send_message(connfd, (char *)"Error creating a room");
+      }
+      return send_message(connfd, (char *)"Created a room");
       // Checklist:
       //  if the command starts with JOIN
       //  if the number of room does not exceed MAX_ROOM_NUM
@@ -308,7 +317,6 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       //    create a new room with the name
       //  update user_list of the room
       //  return success message
-      printf("%s\n","it is \\JOIN nickname room" );
     }
     else if(strcmp(message, "\\ROOMS") == 0){
             printf("%s\n","it is \\ROOMS" );
