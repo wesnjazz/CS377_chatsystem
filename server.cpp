@@ -8,7 +8,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-// #include "server.h"
 
 #include <iostream>
 using namespace std;
@@ -121,7 +120,6 @@ void init_rooms_users_messages(){
   user_list = NULL;
   msg_list = NULL;
 
-  cout << sizeof(Room) << endl;
   room_list = (Room **)malloc(sizeof(Room*) * MAX_ROOM_NUM);
   for(int i=0;i<MAX_ROOM_NUM;i++){
     room_list[i] = (Room *)malloc(sizeof(Room));
@@ -340,7 +338,6 @@ void simple_message(int connfd){
   size_t n;
   char message[MAXLINE];
 
-  printf("********** SIMPLE_MESSAGE() **********\n");
   while((n=receive_message(connfd, message))>0) {
     // message[n] = '\0';  // null terminate message (for string operations)
     printf("Server received a meesage of %d bytes: %s\n", (int)n, message);
@@ -348,7 +345,6 @@ void simple_message(int connfd){
     bzero(message, sizeof(message));  // reintialize the message[] buffer
   }
 
-  printf("********** SIMPLE_MESSAGE() ********** finish\n");
 }
 
 
