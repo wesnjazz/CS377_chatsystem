@@ -81,6 +81,7 @@ typedef struct sockaddr SA;
 
 // A lock for the message buffer.
 pthread_mutex_t lock;
+pthread_mutex_t room;
 
 // We will use this as a simple circular buffer of incoming messages.
 char message_buf[20][50];
@@ -107,6 +108,7 @@ int get_number_of_room_list(){
 }
 
 int create_room(char *room_name){
+  pthread_mutex_lock(&room);
   printf("\t[+]creating a room \"%s\".\n", room_name);
   int x = get_number_of_room_list();
   if (x>=MAX_ROOM_NUM) return -1;
@@ -114,6 +116,7 @@ int create_room(char *room_name){
   (*(room_list[x])).room_id = x;
   num_room_list++;
   printf("\tsize of room_list: %d\n", get_number_of_room_list());
+  pthread_mutex_unlock(&room);
   return num_room_list;
 }
 
@@ -428,6 +431,7 @@ int main(int argc, char *argv[]){
 
   // Initialize the message buffer lock.
   pthread_mutex_init(&lock, NULL);
+  pthread_mutex_init(&room, NULL);
 
   // The port number for this server.
   int port = atoi(argv[1]);
