@@ -7,10 +7,6 @@
 
 using namespace std;
 
-typedef struct Room{
-	string room_name;
-	int room_id;
-	User **user_list;
-} Room;
+
 
 #endif

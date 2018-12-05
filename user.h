@@ -7,10 +7,5 @@
 
 using namespace std;
 
-typedef struct User{
-	string user_name;
-	int user_id;
-	int room_id;
-} User;
 
 #endif

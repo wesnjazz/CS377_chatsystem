@@ -7,9 +7,5 @@
 
 using namespace std;
 
-typedef struct Message{
-	string message;
-	int user_id;
-} Message;
 
 #endif

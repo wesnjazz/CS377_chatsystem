@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 
+using namespace std;
 
 #define BUF_SIZE 2000
 #define USRNAME_SIZE 15
@@ -47,10 +48,11 @@ int main(int argc, char *argv[]){
 
 	while(1){
 		printf("%s: ", user_name);
-		scanf("%s", buffer);
+		fgets(buffer, sizeof(buffer), stdin);	// read whole line including '\n'
+		if(buffer[0]!='\n') buffer[strlen(buffer)-1] = '\0';	// delete '\n' from the input string unless if user input only ENTER.
 		send(sockfd, buffer, strlen(buffer), 0);
 
-		if(strcmp(buffer, "\\quit") == 0){
+		if(strcmp(buffer, "\\QUIT") == 0){
 			close(sockfd);
 			printf("[-]Disconnected from server.\n");
 			exit(1);
