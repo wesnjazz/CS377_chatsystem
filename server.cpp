@@ -124,6 +124,7 @@ int add_user(char *room_name, User *user){// add a user, if the room existed , a
       // User *user_list = (*(room_list[i])).user_list;
 
     }
+  }
   return 0;
 }
 int get_room_userlist(char *room_name){//printout list of user in this room, can just printout nicknames.
