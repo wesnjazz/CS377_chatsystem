@@ -24,6 +24,7 @@ using namespace std;
 
 
 
+
 /**********************
   Structs
 ***********************/
@@ -33,22 +34,28 @@ using namespace std;
 
 #define MAX_ROOM_NUM 20
 #define MAX_USER_IN_A_ROOM 20
+#define MAX_CLIENTS 100
+
+#define DEFAULT_USR_NAME "ChangeName"
 
 typedef struct User{
   char user_name[MAX_USER_NAME];
-  int user_id;//user id is not needed anymore. since we decide to make a unique nickname.
+  int socket;
   int room_id;
+  // int user_id;//user id is not needed anymore. since we decide to make a unique nickname.
 } User;
 typedef struct Room{
   char room_name[MAX_ROOM_NAME];
   int room_id;
   int num_users;
-  User *user_list[MAX_USER_IN_A_ROOM];// we do not need a double pointers for user list
+  int socket_list_in_Room[MAX_USER_IN_A_ROOM];
+  // User *user_list[MAX_USER_IN_A_ROOM];// we do not need a double pointers for user list
   // a array of user object is totally enough, because we do not need to let server have all the user infomation.
 } Room;
 typedef struct Message{
   char message[MAX_MSG_CHAR];
-  int user_id;//we will use nickname instead.
+  int socket;
+  // int user_id;//we will use nickname instead.
 } Message;
 
 
@@ -73,9 +80,11 @@ typedef struct Message{
 
 
 /* global structs */
-Room **room_list;
-User **user_list;
-Message ***msg_list;
+// Room **room_list;
+// User **user_list;
+// Message ***msg_list;
+Room Room_list[MAX_ROOM_NUM];
+User User_list[MAX_CLIENTS];
 
 int num_room_list = 0;
 int *unique_user_id_set = (int *)malloc(sizeof(int) * MAX_USER_IN_A_ROOM * MAX_ROOM_NUM);//maybe no more need.
@@ -102,14 +111,7 @@ int msgi = 0;
 
 
 
-
-
-
 // Intended Space - Don't erase empty lines
-
-
-
-
 
 
 
@@ -121,38 +123,38 @@ int msgi = 0;
 /********************************
   SOCKETS
 ********************************/
-#define MAX_CLIENTS 100
-int volatile sockets[MAX_CLIENTS];
-void initialize_sockets(){
+int volatile socket_list[MAX_CLIENTS];  // global variable for storing sockets
+void initialize_sockets(){  // initialize all the socket by -1 to indicate it is empty
   for(int i=0; i<MAX_CLIENTS; i++){
-    sockets[i] = -1;
+    socket_list[i] = -1;
   }
 }
-void print_sockets(){
+void print_sockets(){ // print current connected sockets
   printf("--- socket list ---\n");
-  for(int i=0; i<3; i++){
-    if(sockets[i] != -1)
-      printf("socket[%d]:%d\n", i, sockets[i]);
+  for(int i=0; i<MAX_CLIENTS; i++){
+    if(socket_list[i] != -1)
+      printf("socket[%d]:%d\n", i, socket_list[i]);
   }
   printf("-------------------\n");
 }
-void add_sockets(int connfd){
+void add_sockets(int connfd){ // add new socket into current socket list. Sockets are filled from left to right
   for(int i=0; i<MAX_CLIENTS; i++){
-    if( sockets[i] != -1) { continue; }
+    if( socket_list[i] != -1) { continue; }
     else {
-      sockets[i] = connfd;
+      socket_list[i] = connfd;
       break;
     }
   }
 }
-void delete_socket(int connfd){
+void delete_socket(int connfd){ // find a matching socket and delete it.
   for(int i=0; i<MAX_CLIENTS; i++){
-    if( sockets[i] == connfd) {
-      sockets[i] = -1;
+    if( socket_list[i] == connfd) {
+      socket_list[i] = -1;
       break;
     }
   }
 }
+
 
 
 
@@ -164,6 +166,7 @@ void delete_socket(int connfd){
 
 
 
+Room room_list_test[MAX_USER_IN_A_ROOM];
 
 /********************************
   ROOM
@@ -171,79 +174,244 @@ void delete_socket(int connfd){
 int get_number_of_room_list(){ //room list
   return num_room_list;
 }
+int increare_number_of_roomlist(){
+  num_room_list++;  
+}
+int get_User_list_index_by_socket(int connfd){
+  for(int i=0; i<MAX_CLIENTS; i++){
+    if(User_list[i].socket == connfd){
+      return i;   // return index number of corresponding socket(client)
+    }
+  }
+  return -1;  // that socket(client) is not existing
+}
+int add_new_User_in_User_list(User user){
+  int i = 0;
+  for(i=0; i<MAX_CLIENTS; i++){
+    if(User_list[i].socket!=-1){
+      continue;
+    } else{
+      User_list[i] = user;
+      return i; // successfully added user into User_list and return index
+    }
+  }
+  return -1;
+}
+int add_User_in_existing_Room(int connfd, char *nickname, int room_id){
+
+//   typedef struct Room{
+//   char room_name[MAX_ROOM_NAME];
+//   int room_id;
+//   int num_users;
+//   int socket_list[MAX_USER_IN_A_ROOM];
+// } Room;
+
+  // Room newRoom = get_User_by_socket(connfd);
+  // Room newRoom = get_Room_by_roomname();
+  int n = Room_list[room_id].num_users;
+  if (n >= MAX_USER_IN_A_ROOM) {
+    return -1;  // there is already MAX users in the room
+  }
+  Room_list[room_id].socket_list_in_Room[n] = connfd;
+  Room_list[room_id].num_users++;
+  int idx = get_User_list_index_by_socket(connfd);
+  if (idx != -1) {
+    bzero(User_list[idx].user_name, MAX_USER_NAME);
+    strcmp(User_list[idx].user_name, nickname);
+  } else {
+//     typedef struct User{
+//   char user_name[MAX_USER_NAME];
+//   int socket;
+//   int room_id;
+//   // int user_id;//user id is not needed anymore. since we decide to make a unique nickname.
+// } User;
+
+    User newUser;
+    bzero(newUser.user_name, MAX_USER_NAME);
+    strcmp(newUser.user_name, nickname);
+    newUser.socket = connfd;
+    newUser.room_id = room_id;
+    add_new_User_in_User_list(newUser);
+  }
+  // if user_list_idx != -1
+    // then it is existing User, so update its user_name
+    // User_list[user_list_idx].user_name = nickname;
+  // else
+  //    create new User
+
+  return 1;
+  // // newRoom.room_name = (char *)"Du Bois Library";
+  // strcpy(newRoom.room_name, (char *)"Du Bois Library");
+  // newRoom.room_id = room_id;
+  // newRoom.num_users = 1;
+  // newRoom.socket_list[0] = user.socket;
+  // room_list_test[0] = 
+}
 int add_user(char *room_name, User *user){// add a user, if the room existed , and doesnot have same name
   int x = get_number_of_room_list();
 
   
-  for (int i=0; i <=x; i++){
-    if((*(room_list[i])).room_name==room_name){
+  // for (int i=0; i <=x; i++){
+    // if((*(room_list[i])).room_name==room_name){
 
       //join the room
       // User *user_list = (*(room_list[i])).user_list;
 
-    }
-  }
+    // }
+  // }
   return 0;
 }
 int get_room_userlist(char *room_name){//printout list of user in this room, can just printout nicknames.
   //since room id isnot needed.
   return 0;
 }
-int create_room(char *room_name, char *user_name){// create room if room is not existed, and add the user.
+// int create_room_backup(char *room_name, char *user_name){// create room if room is not existed, and add the user.
+//   //if room is existed and not full , we add the user.
+//   pthread_mutex_lock(&room);
+//   printf("\t[+]creating a room \"%s\".\n", room_name);
+//   int x = get_number_of_room_list();
+  
+//   for (int i=0; i <=x; i++){
+//     if((*(room_list[i])).room_name==room_name){
+//       //join the room
+//       // User *user_list = (*(room_list[i])).user_list;
+
+//     }
+//     if(i==x)
+//     {
+//       if (x>=MAX_ROOM_NUM) return -1;
+//       strcpy((*(room_list[x])).room_name, room_name);
+//       (*(room_list[x])).room_id = x;
+//       //update user_list of the room
+//       num_room_list++;
+//       printf("\tsize of room_list: %d\n", get_number_of_room_list());
+//     }
+//   }
+ 
+  
+//   pthread_mutex_unlock(&room);
+//   return num_room_list;
+// }
+int create_room(int connfd, char *nickname, char *room_name){// create room if room is not existed, and add the user.
   //if room is existed and not full , we add the user.
   pthread_mutex_lock(&room);
   printf("\t[+]creating a room \"%s\".\n", room_name);
   int x = get_number_of_room_list();
-  
-  for (int i=0; i <=x; i++){
-    if((*(room_list[i])).room_name==room_name){
-      //join the room
-      // User *user_list = (*(room_list[i])).user_list;
 
-    }
-    if(i==x)
-    {
-      if (x>=MAX_ROOM_NUM) return -1;
-      strcpy((*(room_list[x])).room_name, room_name);
-      (*(room_list[x])).room_id = x;
-      //update user_list of the room
-      num_room_list++;
-      printf("\tsize of room_list: %d\n", get_number_of_room_list());
-    }
-  }
- 
-  
+//   typedef struct Room{
+//   char room_name[MAX_ROOM_NAME];
+//   int room_id;
+//   int num_users;
+//   int socket_list[MAX_USER_IN_A_ROOM];
+// } Room;
+
+  Room newRoom;
+  strcpy(newRoom.room_name, room_name);
+  newRoom.room_id = x;
+  newRoom.num_users = 1;
+  newRoom.socket_list_in_Room[0] = connfd;
+  Room_list[x] = newRoom;
+  increare_number_of_roomlist();
   pthread_mutex_unlock(&room);
   return num_room_list;
 }
+int is_room_name_existing(char *room_name){
+  for(int i=0; i<get_number_of_room_list(); i++){
+    if (strcmp(room_list_test[i].room_name, room_name) == 0 ){ // there is an existing room with the same name
+      printf("Existing a room with the name %s\n", room_name);
+      return room_list_test[i].room_id; // return room_id
+    }
+  }
+  printf("No such name of room existing %s\n", room_name);
+  return -1;  // there is no room with the same name
+}
+int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create room if room is not existed, and add the user.
+  //if room is existed and not full , we add the user.
+  // pthread_mutex_lock(&room);
+  // check 
+  // if there is existing room with room_name
+  //    add_user_existing_room()
+  // else
+  //    if number of room >= MAX
+  //        return error
+  //    create_room()
+  // return success
 
-void init_rooms_users_messages(){ 
-  room_list = NULL;
-  user_list = NULL;
-  msg_list = NULL;
+  if(int r_id = is_room_name_existing(room_name) > -1){  // if there is existing room with same name
+    add_User_in_existing_Room(connfd, nickname, r_id);
+  } else {  // nope? then we need to create a new room
+    if (get_number_of_room_list() >= MAX_ROOM_NUM) { return -1; }   // if number of room is full
+    create_room(connfd, nickname, room_name);
+  }
+  // pthread_mutex_unlock(&room);
+}
+
+void init_Rooms_Users_Messages(){ 
+  // room_list = NULL;
+  // user_list = NULL;
+  // msg_list = NULL;
+// typedef struct User{
+//   char user_name[MAX_USER_NAME];
+//   int socket;
+//   int room_id;
+//   // int user_id;//user id is not needed anymore. since we decide to make a unique nickname.
+// } User;
+// typedef struct Room{
+//   char room_name[MAX_ROOM_NAME];
+//   int room_id;
+//   int num_users;
+//   int socket_list_in_Room[MAX_USER_IN_A_ROOM];
+//   // User *user_list[MAX_USER_IN_A_ROOM];// we do not need a double pointers for user list
+//   // a array of user object is totally enough, because we do not need to let server have all the user infomation.
+// } Room;
+// typedef struct Message{
+//   char message[MAX_MSG_CHAR];
+//   int socket;
+//   // int user_id;//we will use nickname instead.
+// } Message;
+
+  User initUser;
+  initUser.user_name[0] = '\0';
+  initUser.socket = -1;
+  initUser.room_id = -1;
+  for(int i=0; i<MAX_CLIENTS; i++){
+    User_list[i] = initUser;
+  }
+
+  Room initRoom;
+  initRoom.room_name[0] = '\0';
+  initRoom.room_id = -1;
+  initRoom.num_users = 0;
+  initRoom.socket_list_in_Room[0] = -1;
+  for(int i=0; i<MAX_ROOM_NUM; i++){
+    Room_list[i] = initRoom;
+  }
+
+
 
   // Initialize room_list
-  room_list = (Room **)malloc(sizeof(Room*) * MAX_ROOM_NUM);
-  for(int i=0;i<MAX_ROOM_NUM;i++){
-    room_list[i] = (Room *)malloc(sizeof(Room));
-  }
-  int r = create_room((char *)"Lobby",(char *)"Administer"); // create the first room with the name "Lobby"
+  // room_list = (Room **)malloc(sizeof(Room*) * MAX_ROOM_NUM);
+  // for(int i=0;i<MAX_ROOM_NUM;i++){
+    // room_list[i] = (Room *)malloc(sizeof(Room));
+    // Room_list[i] = 0;
+  // }
+  // int r = JOIN_Nickname_Room((char *)"Lobby",(char *)"Administer"); // create the first room with the name "Lobby"
 
   // Initialize unique_user_id
-  for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){ //we may not need this part.
-    unique_user_id_set_mark[i] = false;
-    unique_user_id_set[i] = i;
-  }
+  // for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){ //we may not need this part.
+  //   unique_user_id_set_mark[i] = false;
+  //   unique_user_id_set[i] = i;
+  // }
   // for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){
   //   printf("\t%d",unique_user_id_set[i]);
   // }
 }
 bool check_user_in_room(int room_id, int user_id){ // we can simply this function, since we do not need pointer.
-  for(int i=0; i<(*(room_list[room_id])).num_users; i++){
-    if ( (*(*(room_list[room_id])).user_list[i]).user_id == user_id) {
-      return true;
-    }
-  }
+  // for(int i=0; i<(*(room_list[room_id])).num_users; i++){
+  //   if ( (*(*(room_list[room_id])).user_list[i]).user_id == user_id) {
+  //     return true;
+  //   }
+  // }
   return false;
 }
 int get_unique_user_id(){// we may not need this function anymore.
@@ -353,6 +521,35 @@ int send_JOIN_message(int connfd){
 //   return send_message(connfd, message);
 // }
 
+// int send_roomlist_message_backup(int connfd){
+//   char *prefix = (char *)"Room [";
+//   char *suffix = (char *)"]: ";
+//   char list_buffer[(MAX_ROOM_NUM + 2) * (sizeof(prefix) + MAX_ROOM_NAME + 1)];
+//   bzero(list_buffer, sizeof(list_buffer));  // initialize list_buffer
+  
+//   char *preprefix = (char *)"\nNumber of Rooms: ";
+//   char temp[10]; // buffer to save int values
+//   sprintf(temp, "%d", get_number_of_room_list());
+//   //temp[strlen(temp)] = '\n';
+//   //temp[9] = '\0';
+
+//   strcat(list_buffer, preprefix);
+
+//   strcat(list_buffer, temp);
+  
+//   for(int i=0;i<num_room_list;i++){
+//     strcat(list_buffer, "\n");
+//     strcat(list_buffer, prefix);  // add prefix
+//     int temp_int = (*(room_list[i])).room_id;  // get room_id
+//     sprintf(temp, "%d", temp_int);  // convert room_id into chars
+//     strcat(list_buffer, temp); // add room_id chars
+//     strcat(list_buffer, suffix);  // add suffix
+//     strcat(list_buffer, (*(room_list[i])).room_name); // add room_name
+    
+//   }
+//   printf("Sneding: %s\n", list_buffer);
+//   return send_message(connfd, list_buffer);
+// }
 int send_roomlist_message(int connfd){
   char *prefix = (char *)"Room [";
   char *suffix = (char *)"]: ";
@@ -372,11 +569,11 @@ int send_roomlist_message(int connfd){
   for(int i=0;i<num_room_list;i++){
     strcat(list_buffer, "\n");
     strcat(list_buffer, prefix);  // add prefix
-    int temp_int = (*(room_list[i])).room_id;  // get room_id
+    int temp_int = room_list_test[i].room_id;  // get room_id
     sprintf(temp, "%d", temp_int);  // convert room_id into chars
     strcat(list_buffer, temp); // add room_id chars
     strcat(list_buffer, suffix);  // add suffix
-    strcat(list_buffer, (*(room_list[i])).room_name); // add room_name
+    strcat(list_buffer, room_list_test[i].room_name); // add room_name
     
   }
   printf("Sneding: %s\n", list_buffer);
@@ -450,22 +647,22 @@ void string_to_token(char buf[]){
 }
 int process_message(int connfd, char *message) {//idk if we can use case switch
   if (is_Command_message(message)) {
-    printf("iT IS COMMAND.\n");
+    printf("Received a Command: ");
     // if(strcmp(message, "\\JOIN nickname room") == 0){ 
     if(strncmp(message, "\\JOIN",5) == 0){ 
       printf("%s\n","it is \\JOIN nickname room" );
       string_to_token(message);//convert to tokens
+      //array[1] is nickname
       //array[2] is room name
-      //array [3] is nickname
       printf("\n the room name is %s", array[2]);
-
+      printf("nickname:%s\n", array[1]);
       //check the user existed or not 
       //if not , just create a new user
       //else pass the user into create room function.
       
     
    
-      if(create_room((char *)array[2],(char *)array[3]) == -1){
+      if(JOIN_Nickname_Room(connfd, (char *)array[1],(char *)array[2]) == -1){
         return send_message(connfd, (char *)"Error creating a room");
       }
       
@@ -512,9 +709,25 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
 void simple_message(int connfd){
   size_t n;
   char message[MAXLINE];
-  User *thisUser = (User *)malloc(sizeof(User));
-  (*thisUser).user_id = get_unique_user_id();
-  // printf("This User's id: %d\n", (*thisUser).user_id);
+  // User *defaultUser = (User *)malloc(sizeof(User));
+  // (*defaultUser).user_id = get_unique_user_id();
+  // printf("This User's id: %d\n", (*defaultUser).user_id);
+
+// typedef struct User{
+//   char user_name[MAX_USER_NAME];
+//   int socket;
+//   int room_id;
+// } User;
+
+  User defaultUser;
+  strncpy(defaultUser.user_name, DEFAULT_USR_NAME, sizeof(DEFAULT_USR_NAME));
+  defaultUser.socket = connfd;
+  defaultUser.room_id = 0;
+
+  JOIN_Nickname_Room(connfd, (char *)DEFAULT_USR_NAME, (char *)"Lobby");
+
+  // create_room(connfd, (char *)DEFAULT_USR_NAME, (char *)"Lobby");
+  // add_User_in_existing_Room(connfd, (char *)DEFAULT_USR_NAME, 0);  
 
   while((n=receive_message(connfd, message))>0) {
     // message[n] = '\0';  // null terminate message (for string operations)
@@ -522,7 +735,7 @@ void simple_message(int connfd){
     n = process_message(connfd, message);
     bzero(message, sizeof(message));  // reintialize the message[] buffer
   }
-  free(thisUser);
+  // free(defaultUser);
 }
 
 
@@ -599,7 +812,7 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
   int listenfd = open_listenfd(port);
 
   // Initialize ROOMS, USERS, MESSAGES
-  init_rooms_users_messages();
+  init_Rooms_Users_Messages();
 
   initialize_sockets();
   print_sockets();
