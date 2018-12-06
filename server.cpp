@@ -276,12 +276,12 @@ int send_userlist_message(int connfd) {
 int send_helplist_message(int connfd) {
   char message[20 * 100] = "";
   const char *temp_user_list[6];
-    temp_user_list[0] = "-JOIN nickname room";
-    temp_user_list[1] = "-ROOMS";
-    temp_user_list[2] = "-LEAVE";
-    temp_user_list[3] = "-WHO";
-    temp_user_list[4] = "-nickname message";
-    temp_user_list[5] = "-HELP";
+    temp_user_list[0] = "\\JOIN nickname room";
+    temp_user_list[1] = "\\ROOMS";
+    temp_user_list[2] = "\\LEAVE";
+    temp_user_list[3] = "\\WHO";
+    temp_user_list[4] = "\\nickname message";
+    temp_user_list[5] = "\\HELP";
   for (int i = 0; i < 6; i++) {
     if (strcmp(temp_user_list[i], "") == 0) break;//room list
     strcat(message, temp_user_list[i]);//room list
@@ -302,7 +302,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
   if (is_Command_message(message)) {
     printf("iT IS COMMAND.\n");
     // if(strcmp(message, "\\JOIN nickname room") == 0){ 
-    if(strcmp(message, "\\JOIN") == 0){ 
+    if(strncmp(message, "\\JOIN",5) == 0){ 
       printf("%s\n","it is \\JOIN nickname room" );
       if(create_room((char *)"Test Room 1") == -1){
         return send_message(connfd, (char *)"Error creating a room");
@@ -343,9 +343,9 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
 
     }
     else{
-      char tempMessage[1024] ="command not recognized";
+      char tempMessage[1024] =" command not recognized";
       strcat(message,tempMessage);
-      printf("%s\n", message );
+      printf("%s\n ", message );
       return send_message(connfd,message);
     }
     return send_ROOM_message(connfd);
