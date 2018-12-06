@@ -233,19 +233,22 @@ int send_roomlist_message(int connfd){
   char *preprefix = (char *)"\nNumber of Rooms: ";
   char temp[10]; // buffer to save int values
   sprintf(temp, "%d", get_number_of_room_list());
-  temp[strlen(temp)] = '\n';
-  temp[9] = '\0';
+  //temp[strlen(temp)] = '\n';
+  //temp[9] = '\0';
+
   strcat(list_buffer, preprefix);
+
   strcat(list_buffer, temp);
   
   for(int i=0;i<num_room_list;i++){
+    strcat(list_buffer, "\n");
     strcat(list_buffer, prefix);  // add prefix
     int temp_int = (*(room_list[i])).room_id;  // get room_id
     sprintf(temp, "%d", temp_int);  // convert room_id into chars
     strcat(list_buffer, temp); // add room_id chars
     strcat(list_buffer, suffix);  // add suffix
     strcat(list_buffer, (*(room_list[i])).room_name); // add room_name
-    strcat(list_buffer, "\n");
+    
   }
   printf("Sneding: %s\n", list_buffer);
   return send_message(connfd, list_buffer);
