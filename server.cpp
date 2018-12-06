@@ -317,9 +317,9 @@ int create_room(int connfd, char *nickname, char *room_name){// create room if r
 }
 int is_room_name_existing(char *room_name){
   for(int i=0; i<get_number_of_room_list(); i++){
-    if (strcmp(room_list_test[i].room_name, room_name) == 0 ){ // there is an existing room with the same name
+    if (strcmp(Room_list[i].room_name, room_name) == 0 ){ // there is an existing room with the same name
       printf("Existing a room with the name %s\n", room_name);
-      return room_list_test[i].room_id; // return room_id
+      return Room_list[i].room_id; // return room_id
     }
   }
   printf("No such name of room existing %s\n", room_name);
@@ -536,7 +536,7 @@ int send_JOIN_message(int connfd){
 //   strcat(list_buffer, preprefix);
 
 //   strcat(list_buffer, temp);
-  
+
 //   for(int i=0;i<num_room_list;i++){
 //     strcat(list_buffer, "\n");
 //     strcat(list_buffer, prefix);  // add prefix
@@ -569,11 +569,11 @@ int send_roomlist_message(int connfd){
   for(int i=0;i<num_room_list;i++){
     strcat(list_buffer, "\n");
     strcat(list_buffer, prefix);  // add prefix
-    int temp_int = room_list_test[i].room_id;  // get room_id
+    int temp_int = Room_list[i].room_id;  // get room_id
     sprintf(temp, "%d", temp_int);  // convert room_id into chars
     strcat(list_buffer, temp); // add room_id chars
     strcat(list_buffer, suffix);  // add suffix
-    strcat(list_buffer, room_list_test[i].room_name); // add room_name
+    strcat(list_buffer, Room_list[i].room_name); // add room_name
     
   }
   printf("Sneding: %s\n", list_buffer);
@@ -712,12 +712,6 @@ void simple_message(int connfd){
   // User *defaultUser = (User *)malloc(sizeof(User));
   // (*defaultUser).user_id = get_unique_user_id();
   // printf("This User's id: %d\n", (*defaultUser).user_id);
-
-// typedef struct User{
-//   char user_name[MAX_USER_NAME];
-//   int socket;
-//   int room_id;
-// } User;
 
   User defaultUser;
   strncpy(defaultUser.user_name, DEFAULT_USR_NAME, sizeof(DEFAULT_USR_NAME));
