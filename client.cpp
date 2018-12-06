@@ -52,15 +52,17 @@ int main(int argc, char *argv[]){
 		if(buffer[0]!='\n') buffer[strlen(buffer)-1] = '\0';	// delete '\n' from the input string unless if user input only ENTER.
 		send(sockfd, buffer, strlen(buffer), 0);
 
-		if(strcmp(buffer, "\\QUIT") == 0){
-			close(sockfd);
-			printf("[-]Disconnected from server.\n");
-			exit(1);
-		}
+		
 
 		if(recv(sockfd, buffer, BUF_SIZE, 0)<0){
 			printf("[-]Error in receiving data.\n");
 		}else{
+			if(strcmp(buffer, "GoodBye") == 0){
+			printf("%s \n", buffer);
+			close(sockfd);
+			printf("[-]Disconnected from server.\n");
+			exit(1);
+		}
 			printf("Server: %s\n", buffer);
 		}
 	}

@@ -106,16 +106,35 @@ int msgi = 0;
 int get_number_of_room_list(){
   return num_room_list;
 }
-
-int create_room(char *room_name){
+int add_user(char *room_name, char *user_name){
+  return 0;
+}
+int room_list(char *room_name){
+  return 0;
+}
+int create_room(char *room_name, char *user_name){
   pthread_mutex_lock(&room);
   printf("\t[+]creating a room \"%s\".\n", room_name);
   int x = get_number_of_room_list();
-  if (x>=MAX_ROOM_NUM) return -1;
-  strcpy((*(room_list[x])).room_name, room_name);
-  (*(room_list[x])).room_id = x;
-  num_room_list++;
-  printf("\tsize of room_list: %d\n", get_number_of_room_list());
+  
+  for (int i=0; i <=x; i++){
+    if((*(room_list[i])).room_name==room_name){
+      //join the room
+      // User *user_list = (*(room_list[i])).user_list;
+
+    }
+    if(i==x)
+    {
+      if (x>=MAX_ROOM_NUM) return -1;
+      strcpy((*(room_list[x])).room_name, room_name);
+      (*(room_list[x])).room_id = x;
+      //update user_list of the room
+      num_room_list++;
+      printf("\tsize of room_list: %d\n", get_number_of_room_list());
+    }
+  }
+ 
+  
   pthread_mutex_unlock(&room);
   return num_room_list;
 }
@@ -129,7 +148,7 @@ void init_rooms_users_messages(){
   for(int i=0;i<MAX_ROOM_NUM;i++){
     room_list[i] = (Room *)malloc(sizeof(Room));
   }
-  int r = create_room((char *)"Lobby");
+  int r = create_room((char *)"Lobby","Administer");
 }
 
 
@@ -233,19 +252,22 @@ int send_roomlist_message(int connfd){
   char *preprefix = (char *)"\nNumber of Rooms: ";
   char temp[10]; // buffer to save int values
   sprintf(temp, "%d", get_number_of_room_list());
-  temp[strlen(temp)] = '\n';
-  temp[9] = '\0';
+  //temp[strlen(temp)] = '\n';
+  //temp[9] = '\0';
+
   strcat(list_buffer, preprefix);
+
   strcat(list_buffer, temp);
   
   for(int i=0;i<num_room_list;i++){
+    strcat(list_buffer, "\n");
     strcat(list_buffer, prefix);  // add prefix
     int temp_int = (*(room_list[i])).room_id;  // get room_id
     sprintf(temp, "%d", temp_int);  // convert room_id into chars
     strcat(list_buffer, temp); // add room_id chars
     strcat(list_buffer, suffix);  // add suffix
     strcat(list_buffer, (*(room_list[i])).room_name); // add room_name
-    strcat(list_buffer, "\n");
+    
   }
   printf("Sneding: %s\n", list_buffer);
   return send_message(connfd, list_buffer);
@@ -276,12 +298,12 @@ int send_userlist_message(int connfd) {
 int send_helplist_message(int connfd) {
   char message[20 * 100] = "";
   const char *temp_user_list[6];
-    temp_user_list[0] = "-JOIN nickname room";
-    temp_user_list[1] = "-ROOMS";
-    temp_user_list[2] = "-LEAVE";
-    temp_user_list[3] = "-WHO";
-    temp_user_list[4] = "-nickname message";
-    temp_user_list[5] = "-HELP";
+    temp_user_list[0] = "\\JOIN nickname room";
+    temp_user_list[1] = "\\ROOMS";
+    temp_user_list[2] = "\\LEAVE";
+    temp_user_list[3] = "\\WHO";
+    temp_user_list[4] = "\\nickname message";
+    temp_user_list[5] = "\\HELP";
   for (int i = 0; i < 6; i++) {
     if (strcmp(temp_user_list[i], "") == 0) break;//room list
     strcat(message, temp_user_list[i]);//room list
@@ -297,29 +319,50 @@ int send_helplist_message(int connfd) {
   return send_message(connfd, message);
 }
 
+char *array[3];
+void string_to_token(char buf[]){
+  int i = 0;
+    char *p = strtok (buf, " ");
+    
 
+    while (p != NULL)
+    {
+        array[i++] = p;
+        p = strtok (NULL, " ");
+    }
+
+    // for (i = 0; i < 3; ++i) 
+    //     printf("%s\n", array[i]);
+}
 int process_message(int connfd, char *message) {//idk if we can use case switch
   if (is_Command_message(message)) {
     printf("iT IS COMMAND.\n");
     // if(strcmp(message, "\\JOIN nickname room") == 0){ 
-    if(strcmp(message, "\\JOIN") == 0){ 
+    if(strncmp(message, "\\JOIN",5) == 0){ 
       printf("%s\n","it is \\JOIN nickname room" );
-      if(create_room((char *)"Test Room 1") == -1){
+      string_to_token(message);
+      printf("\n the room name is %s", array[2]);
+      
+    // Keep printing tokens while one of the 
+    // delimiters present in str[]. 
+   
+      if(create_room((char *)array[2],(char *)array[3]) == -1){
         return send_message(connfd, (char *)"Error creating a room");
       }
-      return send_message(connfd, (char *)"Created a room");
+      
       // Checklist:
-      //  if the command starts with JOIN
-      //  if the number of room does not exceed MAX_ROOM_NUM
-      //    change user's name
-      //  else
-      //    return error message
+      //  if the command starts with JOIN done
+      //  if the number of room does not exceed MAX_ROOM_NUM done
+      //    change user's name done 
+      //  else done 
+      //    return error message done
       //  if the room name exists, 
       //    join the room
       //  else
       //    create a new room with the name
       //  update user_list of the room
       //  return success message
+      return send_message(connfd, (char *)"Created a room");
     }
     else if(strcmp(message, "\\ROOMS") == 0){
             printf("%s\n","it is \\ROOMS" );
@@ -343,9 +386,9 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
 
     }
     else{
-      char tempMessage[1024] ="command not recognized";
+      char tempMessage[1024] =" command not recognized";
       strcat(message,tempMessage);
-      printf("%s\n", message );
+      printf("%s\n ", message );
       return send_message(connfd,message);
     }
     return send_ROOM_message(connfd);
