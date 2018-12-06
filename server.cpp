@@ -29,9 +29,10 @@ using namespace std;
 ***********************/
 #define MAX_USER_NAME 30
 #define MAX_ROOM_NAME 30
-#define MAX_MSG_CHAR 50
+#define MAX_MSG_CHAR 100
 
 #define MAX_ROOM_NUM 20
+#define MAX_USER_IN_A_ROOM 20
 
 typedef struct User{
   char user_name[MAX_USER_NAME];
@@ -41,7 +42,8 @@ typedef struct User{
 typedef struct Room{
   char room_name[MAX_ROOM_NAME];
   int room_id;
-  User **user_list;
+  int num_users;
+  User *user_list[MAX_USER_IN_A_ROOM];
 } Room;
 typedef struct Message{
   char message[MAX_MSG_CHAR];
@@ -75,6 +77,10 @@ User **user_list;
 Message ***msg_list;
 
 int num_room_list = 0;
+int *unique_user_id_set = (int *)malloc(sizeof(int) * MAX_USER_IN_A_ROOM * MAX_ROOM_NUM);
+bool *unique_user_id_set_mark = (bool *)malloc(sizeof(bool) * MAX_USER_IN_A_ROOM * MAX_ROOM_NUM);
+// int volatile unique_user_id_set[MAX_USER_IN_A_ROOM * MAX_ROOM_NUM];
+// bool volatile unique_user_id_set_mark[MAX_USER_IN_A_ROOM * MAX_ROOM_NAME];
 
 /* Simplifies calls to bind(), connect(), and accept() */
 typedef struct sockaddr SA;
@@ -109,7 +115,7 @@ int get_number_of_room_list(){
 int add_user(char *room_name, char *user_name){
   return 0;
 }
-int room_list(char *room_name){
+int get_room_list(char *room_name){
   return 0;
 }
 int create_room(char *room_name, char *user_name){
@@ -144,13 +150,43 @@ void init_rooms_users_messages(){
   user_list = NULL;
   msg_list = NULL;
 
+  // Initialize room_list
   room_list = (Room **)malloc(sizeof(Room*) * MAX_ROOM_NUM);
   for(int i=0;i<MAX_ROOM_NUM;i++){
     room_list[i] = (Room *)malloc(sizeof(Room));
   }
-  int r = create_room((char *)"Lobby","Administer");
-}
+  int r = create_room((char *)"Lobby",(char *)"Administer"); // create the first room with the name "Lobby"
 
+  // Initialize unique_user_id
+  for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){
+    unique_user_id_set_mark[i] = false;
+    unique_user_id_set[i] = i;
+  }
+  // for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){
+  //   printf("\t%d",unique_user_id_set[i]);
+  // }
+}
+bool check_user_in_room(int room_id, int user_id){
+  for(int i=0; i<(*(room_list[room_id])).num_users; i++){
+    if ( (*(*(room_list[room_id])).user_list[i]).user_id == user_id) {
+      return true;
+    }
+  }
+  return false;
+}
+int get_unique_user_id(){
+  printf("%p\n", unique_user_id_set);
+  for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){
+    if(unique_user_id_set_mark[i] == false) {
+      unique_user_id_set_mark[i] == true;
+      printf("ha %p\n", unique_user_id_set);
+      printf("ha %d %d %d\n", unique_user_id_set[0], unique_user_id_set[1], unique_user_id_set[2]);
+      printf("ha %d %d %d\n", unique_user_id_set_mark[0], unique_user_id_set_mark[1], unique_user_id_set_mark[2]);
+      return unique_user_id_set[i];
+    }
+  }
+  return -1;  // if all user_id is used
+}
 
 
 
@@ -221,7 +257,9 @@ int send_ROOM_message(int connfd) {
 
   return send_message(connfd, message);
 }
+int send_JOIN_message(int connfd){
 
+}
 /* Command: \ROOMS */
 // int send_roomlist_message(int connfd) {
 //   char message[20 * 50] = "";
@@ -403,6 +441,9 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
 void simple_message(int connfd){
   size_t n;
   char message[MAXLINE];
+  User *thisUser = (User *)malloc(sizeof(User));
+  (*thisUser).user_id = get_unique_user_id();
+  printf("This User's id: %d\n", (*thisUser).user_id);
 
   while((n=receive_message(connfd, message))>0) {
     // message[n] = '\0';  // null terminate message (for string operations)
@@ -410,7 +451,7 @@ void simple_message(int connfd){
     n = process_message(connfd, message);
     bzero(message, sizeof(message));  // reintialize the message[] buffer
   }
-
+  free(thisUser);
 }
 
 
@@ -520,6 +561,9 @@ int main(int argc, char *argv[]){
 
 /* thread routine */
 void *thread(void *vargp) {
+  printf("%p\n", unique_user_id_set);
+  printf("%d %d %d\n", unique_user_id_set[0], unique_user_id_set[1], unique_user_id_set[2]);
+  printf("%d %d %d\n", unique_user_id_set_mark[0], unique_user_id_set_mark[1], unique_user_id_set_mark[2]);
   // Grab the connection file descriptor.
   int connfd = *((int *)vargp);
   // Detach the thread to self reap.
