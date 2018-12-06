@@ -100,6 +100,64 @@ int msgi = 0;
 
 
 
+
+
+
+
+
+// Intended Space - Don't erase empty lines
+
+
+
+
+
+
+
+
+
+
+
+
+/********************************
+  SOCKETS
+********************************/
+#define MAX_CLIENTS 100
+int volatile sockets[MAX_CLIENTS];
+void initialize_sockets(){
+  for(int i=0; i<MAX_CLIENTS; i++){
+    sockets[i] = -1;
+  }
+}
+void print_sockets(){
+  printf("--- socket list ---\n");
+  for(int i=0; i<3; i++){
+    if(sockets[i] != -1)
+      printf("socket[%d]:%d\n", i, sockets[i]);
+  }
+  printf("-------------------\n");
+}
+void add_sockets(int connfd){
+  for(int i=0; i<MAX_CLIENTS; i++){
+    if( sockets[i] != -1) { continue; }
+    else {
+      sockets[i] = connfd;
+      break;
+    }
+  }
+}
+void delete_socket(int connfd){
+  for(int i=0; i<MAX_CLIENTS; i++){
+    if( sockets[i] == connfd) {
+      sockets[i] = -1;
+      break;
+    }
+  }
+}
+
+
+
+
+
 // Intended Space - Don't erase empty lines
 
 
@@ -189,7 +247,7 @@ bool check_user_in_room(int room_id, int user_id){ // we can simply this functio
   return false;
 }
 int get_unique_user_id(){// we may not need this function anymore.
-  printf("%p\n", unique_user_id_set);
+  // printf("%p\n", unique_user_id_set);
   for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){
     if(unique_user_id_set_mark[i] == false) {
       unique_user_id_set_mark[i] == true;
@@ -456,11 +514,11 @@ void simple_message(int connfd){
   char message[MAXLINE];
   User *thisUser = (User *)malloc(sizeof(User));
   (*thisUser).user_id = get_unique_user_id();
-  printf("This User's id: %d\n", (*thisUser).user_id);
+  // printf("This User's id: %d\n", (*thisUser).user_id);
 
   while((n=receive_message(connfd, message))>0) {
     // message[n] = '\0';  // null terminate message (for string operations)
-    printf("Server received a meesage of %d bytes: %s\n", (int)n, message);
+    printf("From socket[%d]: Server received a meesage of %d bytes: %s\n", connfd, (int)n, message);
     n = process_message(connfd, message);
     bzero(message, sizeof(message));  // reintialize the message[] buffer
   }
@@ -543,6 +601,8 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
   // Initialize ROOMS, USERS, MESSAGES
   init_rooms_users_messages();
 
+  initialize_sockets();
+  print_sockets();
   while(1){
     // The connection file descriptor.
     int *connfdp = (int *)malloc(sizeof(int));
@@ -565,10 +625,13 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
     // The client's port number.
     unsigned short client_port = ntohs(clientaddr.sin_port);
 
-    printf("server connected to %s (%s), port %u\n", hp->h_name, haddrp,
-           client_port);
+    printf("[+]Server connected to %s (%s), port %u, socket[%d]\n", hp->h_name, haddrp,
+           client_port, *connfdp);
 
     // Create a new thread to handle the connection.
+    add_sockets(*connfdp);
+    // printf("\t\t sockets[] array at:%p \t sockets[0]:%d \t *(sockets[0]):%d \n", sockets, sockets[0], (sockets[0]));
+    // printf("\t\t\t\t\t\t connfdp: %p \t *connfdp: %d\n", connfdp, *connfdp);
     pthread_t tid;
     pthread_create(&tid, NULL, thread, connfdp);
   }
@@ -578,9 +641,9 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
 
 /* thread routine */
 void *thread(void *vargp) {
-  printf("%p\n", unique_user_id_set);
-  printf("%d %d %d\n", unique_user_id_set[0], unique_user_id_set[1], unique_user_id_set[2]);
-  printf("%d %d %d\n", unique_user_id_set_mark[0], unique_user_id_set_mark[1], unique_user_id_set_mark[2]);
+  // printf("%p\n", unique_user_id_set);
+  // printf("%d %d %d\n", unique_user_id_set[0], unique_user_id_set[1], unique_user_id_set[2]);
+  // printf("%d %d %d\n", unique_user_id_set_mark[0], unique_user_id_set_mark[1], unique_user_id_set_mark[2]);
   // Grab the connection file descriptor.
   int connfd = *((int *)vargp);
   // Detach the thread to self reap.
@@ -588,8 +651,12 @@ void *thread(void *vargp) {
   // Free the incoming argument - allocated in the main thread.
   free(vargp);
   // Handle the echo client requests.
+  printf("[+]New Thread created with the socket [%d]\n", connfd);
+  print_sockets();
   simple_message(connfd);
-  printf("client disconnected.\n");
+  printf("[-]Client with socket [%d] disconnected.\n", connfd);
+  delete_socket(connfd);
+  print_sockets();
   // Don't forget to close the connection!
   close(connfd);
   return NULL;
