@@ -36,18 +36,19 @@ using namespace std;
 
 typedef struct User{
   char user_name[MAX_USER_NAME];
-  int user_id;
+  int user_id;//user id is not needed anymore. since we decide to make a unique nickname.
   int room_id;
 } User;
 typedef struct Room{
   char room_name[MAX_ROOM_NAME];
   int room_id;
   int num_users;
-  User *user_list[MAX_USER_IN_A_ROOM];
+  User *user_list[MAX_USER_IN_A_ROOM];// we do not need a double pointers for user list
+  // a array of user object is totally enough, because we do not need to let server have all the user infomation.
 } Room;
 typedef struct Message{
   char message[MAX_MSG_CHAR];
-  int user_id;
+  int user_id;//we will use nickname instead.
 } Message;
 
 
@@ -77,8 +78,8 @@ User **user_list;
 Message ***msg_list;
 
 int num_room_list = 0;
-int *unique_user_id_set = (int *)malloc(sizeof(int) * MAX_USER_IN_A_ROOM * MAX_ROOM_NUM);
-bool *unique_user_id_set_mark = (bool *)malloc(sizeof(bool) * MAX_USER_IN_A_ROOM * MAX_ROOM_NUM);
+int *unique_user_id_set = (int *)malloc(sizeof(int) * MAX_USER_IN_A_ROOM * MAX_ROOM_NUM);//maybe no more need.
+bool *unique_user_id_set_mark = (bool *)malloc(sizeof(bool) * MAX_USER_IN_A_ROOM * MAX_ROOM_NUM);//maybe no more need.
 // int volatile unique_user_id_set[MAX_USER_IN_A_ROOM * MAX_ROOM_NUM];
 // bool volatile unique_user_id_set_mark[MAX_USER_IN_A_ROOM * MAX_ROOM_NAME];
 
@@ -109,16 +110,28 @@ int msgi = 0;
 /********************************
   ROOM
 *********************************/
-int get_number_of_room_list(){
+int get_number_of_room_list(){ //room list
   return num_room_list;
 }
-int add_user(char *room_name, char *user_name){
+int add_user(char *room_name, User *user){// add a user, if the room existed , and doesnot have same name
+  int x = get_number_of_room_list();
+
+  
+  for (int i=0; i <=x; i++){
+    if((*(room_list[i])).room_name==room_name){
+
+      //join the room
+      // User *user_list = (*(room_list[i])).user_list;
+
+    }
   return 0;
 }
-int get_room_list(char *room_name){
+int get_room_userlist(char *room_name){//printout list of user in this room, can just printout nicknames.
+  //since room id isnot needed.
   return 0;
 }
-int create_room(char *room_name, char *user_name){
+int create_room(char *room_name, char *user_name){// create room if room is not existed, and add the user.
+  //if room is existed and not full , we add the user.
   pthread_mutex_lock(&room);
   printf("\t[+]creating a room \"%s\".\n", room_name);
   int x = get_number_of_room_list();
@@ -145,7 +158,7 @@ int create_room(char *room_name, char *user_name){
   return num_room_list;
 }
 
-void init_rooms_users_messages(){
+void init_rooms_users_messages(){ 
   room_list = NULL;
   user_list = NULL;
   msg_list = NULL;
@@ -158,7 +171,7 @@ void init_rooms_users_messages(){
   int r = create_room((char *)"Lobby",(char *)"Administer"); // create the first room with the name "Lobby"
 
   // Initialize unique_user_id
-  for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){
+  for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){ //we may not need this part.
     unique_user_id_set_mark[i] = false;
     unique_user_id_set[i] = i;
   }
@@ -166,7 +179,7 @@ void init_rooms_users_messages(){
   //   printf("\t%d",unique_user_id_set[i]);
   // }
 }
-bool check_user_in_room(int room_id, int user_id){
+bool check_user_in_room(int room_id, int user_id){ // we can simply this function, since we do not need pointer.
   for(int i=0; i<(*(room_list[room_id])).num_users; i++){
     if ( (*(*(room_list[room_id])).user_list[i]).user_id == user_id) {
       return true;
@@ -174,14 +187,14 @@ bool check_user_in_room(int room_id, int user_id){
   }
   return false;
 }
-int get_unique_user_id(){
+int get_unique_user_id(){// we may not need this function anymore.
   printf("%p\n", unique_user_id_set);
   for(int i=0; i<MAX_USER_IN_A_ROOM*MAX_ROOM_NUM; i++){
     if(unique_user_id_set_mark[i] == false) {
       unique_user_id_set_mark[i] == true;
-      printf("ha %p\n", unique_user_id_set);
-      printf("ha %d %d %d\n", unique_user_id_set[0], unique_user_id_set[1], unique_user_id_set[2]);
-      printf("ha %d %d %d\n", unique_user_id_set_mark[0], unique_user_id_set_mark[1], unique_user_id_set_mark[2]);
+      // printf("ha %p\n", unique_user_id_set);
+      // printf("ha %d %d %d\n", unique_user_id_set[0], unique_user_id_set[1], unique_user_id_set[2]);
+      // printf("ha %d %d %d\n", unique_user_id_set_mark[0], unique_user_id_set_mark[1], unique_user_id_set_mark[2]);
       return unique_user_id_set[i];
     }
   }
@@ -313,7 +326,9 @@ int send_roomlist_message(int connfd){
 
 
 /* Command: \WHO */
-int send_userlist_message(int connfd) {
+int send_userlist_message(int connfd) { // we call help function which is user-list.(get a list of user nickname.)
+  //for this function ,we can just fomatting the list and send the message to client who send the command.
+
   char message[20 * 50] = "";
   const char *temp_user_list[3];
     temp_user_list[0] = "shipeng";
@@ -333,7 +348,9 @@ int send_userlist_message(int connfd) {
 
   return send_message(connfd, message);
 }
-int send_helplist_message(int connfd) {
+
+int send_helplist_message(int connfd) { // this part do not need help list.
+
   char message[20 * 100] = "";
   const char *temp_user_list[6];
     temp_user_list[0] = "\\JOIN nickname room";
@@ -357,7 +374,7 @@ int send_helplist_message(int connfd) {
   return send_message(connfd, message);
 }
 
-char *array[3];
+char *array[3];// for string to token
 void string_to_token(char buf[]){
   int i = 0;
     char *p = strtok (buf, " ");
@@ -378,53 +395,48 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     // if(strcmp(message, "\\JOIN nickname room") == 0){ 
     if(strncmp(message, "\\JOIN",5) == 0){ 
       printf("%s\n","it is \\JOIN nickname room" );
-      string_to_token(message);
+      string_to_token(message);//convert to tokens
+      //array[2] is room name
+      //array [3] is nickname
       printf("\n the room name is %s", array[2]);
+
+      //check the user existed or not 
+      //if not , just create a new user
+      //else pass the user into create room function.
       
-    // Keep printing tokens while one of the 
-    // delimiters present in str[]. 
+    
    
       if(create_room((char *)array[2],(char *)array[3]) == -1){
         return send_message(connfd, (char *)"Error creating a room");
       }
       
-      // Checklist:
-      //  if the command starts with JOIN done
-      //  if the number of room does not exceed MAX_ROOM_NUM done
-      //    change user's name done 
-      //  else done 
-      //    return error message done
-      //  if the room name exists, 
-      //    join the room
-      //  else
-      //    create a new room with the name
-      //  update user_list of the room
-      //  return success message
+      
       return send_message(connfd, (char *)"Created a room");
     }
-    else if(strcmp(message, "\\ROOMS") == 0){
+    else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
             printf("%s\n","it is \\ROOMS" );
             // printf("%s\n", get_room_list());
             return send_roomlist_message(connfd);
     }
-    else if(strcmp(message, "\\LEAVE") == 0){
+    else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
       char message[1024] = "GoodBye";
       return send_message(connfd, message);
 
     }
-    else if(strcmp(message, "\\WHO") == 0){
+    else if(strcmp(message, "\\WHO") == 0){//this part is fine
           printf("%s\n","it is \\WHO" );
           return send_userlist_message(connfd);
     }
-    else if(strcmp(message, "\\HELP") == 0){
+    else if(strcmp(message, "\\HELP") == 0){//this part is fine
           printf("%s\n","it is \\HELP" );
           return send_helplist_message(connfd);
     }
-    else if(strcmp(message, "\\nickname message") == 0){
+    else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
+      //if you can not find the nickname then show it user not existed. some thing like this. much easy.
 
     }
     else{
-      char tempMessage[1024] =" command not recognized";
+      char tempMessage[1024] =" command not recognized";//this part is fine
       strcat(message,tempMessage);
       printf("%s\n ", message );
       return send_message(connfd,message);
@@ -432,7 +444,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     return send_ROOM_message(connfd);
   } 
 
-    else {
+    else {//this part is fine
       printf("Server responding with echo response.\n");
       return send_message(connfd, message);
     }
@@ -503,7 +515,11 @@ int open_listenfd(int port) {
 // thread function prototype as we have a forward reference in main.
 void *thread(void *vargp);
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]){// we need help function before we call the thread.
+  //we need let user change name first. the default name can a random string by your choose,
+  // but once user connected, we create a user for this client and ask a name from this client.
+  // check if it is repeat. this will all do in a help function.
+  
   // Check the program arguments and print usage if necessary.
   if (argc != 2) {
     fprintf(stderr, "usage: %s <port>\n", argv[0]);
