@@ -13,17 +13,24 @@
 #include <arpa/inet.h>
 #include <iostream>
 #include <string>
+#include <fstream>
 
 using namespace std;
 
 class Client {
 	public:
 		Client(int portNum); // constructor to initialize locks and conditional variables
-		void communicate();
+		void create_socket();
+		void connecting();
+		void sendMessage(char* inputBuffer);
+		string* readFile(string fileName);
+
 	private:
 		int port;
-		int create_socket();
-		int connecting(int sockfd);
+		int socket_status;
+		int connection_status;
+		int receive_status;
+		char outputBuffer[2000];
 };
 
 #endif
