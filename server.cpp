@@ -280,6 +280,7 @@ int create_room(int connfd, char *nickname, char *room_name){
   pthread_mutex_unlock(&room);
   return num_room_list;
 }
+
 int is_room_name_existing(char *room_name){
   for(int i=0; i<get_number_of_room_list(); i++){
     if (strcmp(Room_list[i].room_name, room_name) == 0 ){ // there is an existing room with the same name
@@ -290,6 +291,63 @@ int is_room_name_existing(char *room_name){
   printf("No such name of room existing %s\n", room_name);
   return -1;  // there is no room with the same name
 }
+
+
+
+int leave_room(char *nickname,int room_id){
+  int tempSocket=-1;
+  for(int i=0;i<MAX_CLIENTS;i++){
+    char *tempName=User_list[i].user_name;
+    if(strcmp(nickname,tempName)==0)
+    {
+      tempSocket=User_list[i].socket;
+    }
+  }
+
+  for(int i=0;i<MAX_ROOM_NUM;i++){
+    if(tempSocket==Room_list[room_id].socket_list_in_Room[i])
+    {
+      Room_list[room_id].socket_list_in_Room[i]=-1;
+      return 1;
+    }
+    
+  }
+  return -1;
+}
+
+int check_user_in_which_room(char *nickname){
+  
+  for(int i=0;i<MAX_CLIENTS;i++){
+    char *tempName=User_list[i].user_name;
+    if(strcmp(nickname,tempName)==0)
+    {
+      return User_list[i].room_id;
+    }
+  }
+ // we can simply this function, since we do not need pointer.
+  // for(int i=0; i<(*(room_list[room_id])).num_users; i++){
+  //   if ( (*(*(room_list[room_id])).user_list[i]).user_id == user_id) {
+  //     return true;
+  //   }
+  // }
+  return -1;
+}
+
+const char * check_username_by_socket(int connfd){
+  printf("connfd is %d",connfd);
+  for(int i=0;i<MAX_CLIENTS;i++){
+    printf("searching %d" ,i);
+    int tempSocket=User_list[i].socket;
+    printf("socketnumber is %d",tempSocket);
+    if(connfd == tempSocket)
+    {
+      printf("FIND name %s" ,User_list[i].user_name);
+      return User_list[i].user_name;
+    }
+  }
+  return 0;
+}
+
 int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create room if room is not existed, and add the user.
   /*** 
     purpose: process the command of "\JOIN nichname roomname"
@@ -301,26 +359,21 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   //    create_room() - create a new Room
   // return success
   ***/
+  int room_id = check_user_in_which_room(nickname);
+  int temp_leave_room = leave_room(nickname,room_id);
+  if(temp_leave_room == 1){
 
   if(int r_id = is_room_name_existing(room_name) > -1){  // if there is existing room with same name
     add_User_in_existing_Room(connfd, nickname, r_id);  // add 
   } else {  // nope? then we need to create a new room
-    if (get_number_of_room_list() >= MAX_ROOM_NUM) { return -1; }   // if number of room is full
+    if (get_number_of_room_list() >= MAX_ROOM_NUM) { return -1; }
+       // if number of room is full //leave the old room.
+
     create_room(connfd, nickname, room_name);
+  }
   }
   return 1;
 }
-bool check_user_in_room(int room_id, int user_id){ // we can simply this function, since we do not need pointer.
-  // for(int i=0; i<(*(room_list[room_id])).num_users; i++){
-  //   if ( (*(*(room_list[room_id])).user_list[i]).user_id == user_id) {
-  //     return true;
-  //   }
-  // }
-  return false;
-}
-
-
-
 
 
 
@@ -393,7 +446,7 @@ int send_ROOM_message(int connfd) {
   return send_message(connfd, message);
 }
 int send_JOIN_message(int connfd){
-  ;
+  
 }
 /* Command: \ROOMS */
 int send_roomlist_message(int connfd){
@@ -427,19 +480,38 @@ int send_roomlist_message(int connfd){
 
 
 /* Command: \WHO */
-int send_userlist_message(int connfd) { // we call help function which is user-list.(get a list of user nickname.)
-  //for this function ,we can just fomatting the list and send the message to client who send the command.
-
+int send_userlist_message(int connfd) { 
   char message[20 * 50] = "";
-  const char *temp_user_list[3];
-    temp_user_list[0] = "shipeng";
-    temp_user_list[1] = "ruifeng";
-    temp_user_list[2] = "daniel";
-  for (int i = 0; i < 3; i++) {
-    if (strcmp(temp_user_list[i], "") == 0) break;//room list
-    strcat(message, temp_user_list[i]);//room list
-    strcat(message, ",");
+  int tempRoom_ID = -1;
+  for(int i=0;i<MAX_CLIENTS;i++){
+    int tempSocket = User_list[i].socket;
+    if(tempSocket==connfd)
+    {
+      tempRoom_ID=User_list[i].room_id;
+    }
   }
+  //we find room_id
+
+  for(int i=0;i<MAX_ROOM_NUM;i++){
+    int current_socket_in_room=Room_list[tempRoom_ID].socket_list_in_Room[i];
+    char *nickname[MAX_USER_NAME];
+    if(current_socket_in_room >-1)
+    {
+      for(int i=0; i<MAX_CLIENTS;i++){
+        if(User_list[i].socket==current_socket_in_room)
+        {
+          strcat(message, User_list[i].user_name);
+          strcat(message,",");
+        }
+      }
+
+    }
+    
+    
+  }
+  
+  
+  
 
   // End the message with a newline and empty. This will ensure that the
   // bytes are sent out on the wire. Otherwise it will wait for further
@@ -488,6 +560,7 @@ void string_to_token(char buf[]){
 }
 
 int process_message(int connfd, char *message) {//idk if we can use case switch
+  
   if (is_Command_message(message)) {
     printf("Received a Command: ");
     // Bug: if the command is not made of three words, e.g., just "\JOIN", then this will crash.
@@ -495,6 +568,10 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     if(strncmp(message, "\\JOIN",5) == 0){
       printf("%s\n","it is \\JOIN nickname room" );
       string_to_token(message);//convert to tokens
+      if(!array[1]||!array[2]){
+        printf("%s \n","make sure you have 3 arguments");
+        return send_message(connfd, (char *)"command not recognized,make sure you have 3 arguments");
+      }
       //array[1] is nickname
       //array[2] is room name
       printf("\n the room name is %s", array[2]);
@@ -504,6 +581,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       if(JOIN_Nickname_Room(connfd, (char *)array[1],(char *)array[2]) == -1){
         return send_message(connfd, (char *)"Error creating a room");
       }
+
       return send_message(connfd, (char *)"Created a room");
     }
     else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
@@ -513,6 +591,17 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     }
     else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
       char message[1024] = "GoodBye";
+      return send_message(connfd, message);
+
+    }
+    else if(strcmp(message, "\\WHERE") == 0){//this part is fine
+      printf("%s\n","it is \\where" );
+     // message = (char *)("%s "," Your location room is ");
+      char* nickname = (char*)check_username_by_socket(connfd);
+      printf("the nickname is %s",nickname);
+      int r_id = check_user_in_which_room(nickname);
+      printf("the room_id is %d",r_id);
+      strcat(message,(char *) r_id);
       return send_message(connfd, message);
 
     }
@@ -530,7 +619,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     else{
       char tempMessage[1024] =" command not recognized";//this part is fine
       strcat(message,tempMessage);
-      printf("%s\n ", message );
+      printf("%s\n ", message);
       return send_message(connfd,message);
     }
     return send_ROOM_message(connfd);
