@@ -1,14 +1,14 @@
-1. \\jion nickname room
+1. \\join nickname room
 1.1 check tokens number , done, can test it see if it works by send \JOIN
 
 1.2 check same(existed) rooms, i have heart this is done
 
 1.3 leave room, I have done this part, but not tested yet. maybe you can test it see if it works
-jion 2 user into 1 room ,and let 1 user leave, and other user check the room of user list.
+join 2 user into 1 room ,and let 1 user leave, and other user check the room of user list.
 
 
 
-1.4 not implement ( let user only jion a room or leave a room with himself nickname, if this user use other nickname , just send back the message and tell him the nickname of this user)
+1.4 not implement ( let user only join a room or leave a room with himself nickname, if this user use other nickname , just send back the message and tell him the nickname of this user)
 
 make sure the nickname is unique in server.
 
@@ -23,7 +23,7 @@ for example, user's nickname is "shipeng", when this user use \\join ruifeng roo
 
 3. \leave, daniel will do it in server side not sure if it implemented or not.
 
-4.\who. send back a list of user that is in this room. I have implemented, but not tested yet, you can test it by 2 user jion into 1 room and see if it work, and send me the results if it does not work.
+4.\who. send back a list of user that is in this room. I have implemented, but not tested yet, you can test it by 2 user join into 1 room and see if it work, and send me the results if it does not work.
 
 5.\help done
 
