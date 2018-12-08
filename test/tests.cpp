@@ -19,9 +19,15 @@ TEST(Test, CreateSocket)
 {
   Client client1(3000);
   client1.create_socket();
+  client1.connecting();
   bool status=(client1.getSocket()>0);
 
 
+  ASSERT_EQ(1, status) << "Failure in create_file test CreateFile_BasicCreate\n"
+  <<"create_file on test1.c returned "<<status<<", but should have returned 1";
+
+  status=0;
+  status=(client1.getConnection()>0);
   ASSERT_EQ(1, status) << "Failure in create_file test CreateFile_BasicCreate\n"
   <<"create_file on test1.c returned "<<status<<", but should have returned 1";
 
