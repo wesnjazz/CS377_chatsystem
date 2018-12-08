@@ -88,7 +88,7 @@ TEST(Test, Send_Simple_Message)
   while(true){
       
       try{
-         c.sendMessage(buffer);
+         client1.sendMessage(outputBuffer);
       }catch(int status){
          if(status==SOCKET_EX)
             printf("[-]Error in creating socket.\n");
@@ -98,6 +98,7 @@ TEST(Test, Send_Simple_Message)
             printf("[-]Error in too large sending message.\n");
          else if(status==RECEIVE_EX)
             printf("[-]Error in receiving data.\n");
+         break;
       }
   }
 
