@@ -1,0 +1,40 @@
+1. \\jion nickname room
+1.1 check tokens number , done, can test it see if it works by send \JOIN
+
+1.2 check same(existed) rooms, i have heart this is done
+
+1.3 leave room, I have done this part, but not tested yet. maybe you can test it see if it works
+jion 2 user into 1 room ,and let 1 user leave, and other user check the room of user list.
+
+1.4 not implement ( let user only jion a room or leave a room with himself nickname, if this user use other nickname , just send back the message and tell him the nickname of this user)
+
+for example, user's nickname is "shipeng", when this user use \\join ruifeng room1, it will refuse to do it, and send back the message say" your nickname is shipeng , you can only join a room with your own nickname"
+
+2. \rooms, send back the room list. done i think. by the way, there is a send roomlist function is empty, i am not sure if we should delete it not .
+
+
+3. \leave, daniel will do it in server side not sure if it implemented or not.
+
+4.\who. send back a list of user that is in this room. I have implemented, but not tested yet, you can test it by 2 user jion into 1 room and see if it work, and send me the results if it does not work.
+
+5.\help done
+
+6.\nickname message , to make sure that user do not send himself a message. and make sure the nickname is existed in the same room. you can do it to different room as a feature.
+
+
+7. the message is not recognized after called \help or other command, the message buffer is not cleared.
+this bug is hard to fix, i saw a code with bzero that cleared message buffer, im not sure. the bug is not always happened. if still existed, reply . we will test it to check which command caused the bug.
+
+8 nickname:message , this just chatting message formating. not sure if u did it.
+
+9 \where, i think i implemented this function ,but it have segement fault, becase can not find the user socket, not sure wy. it may becasue the user is not created. test it and send me the result.
+
+10. auto-refresh. not implement yet (not consider it after all the requirement done)
+
+11.chat - history, not implement yet (same)
+
+12 text file send function. not implement yet   (same)
+
+13 like
+
+14 /where(name) this can be very easy implement by where function . but not implement yet.
