@@ -6,7 +6,15 @@
 1.3 leave room, I have done this part, but not tested yet. maybe you can test it see if it works
 jion 2 user into 1 room ,and let 1 user leave, and other user check the room of user list.
 
+
+
 1.4 not implement ( let user only jion a room or leave a room with himself nickname, if this user use other nickname , just send back the message and tell him the nickname of this user)
+
+make sure the nickname is unique in server.
+
+when user leave a room, if the nickname is changed, we should check the nickname existed in server or not,
+refuse if already in server, otherwise we can let them change name 
+also /changename command will do change the nickname without leaving the room. or join a new room.
 
 for example, user's nickname is "shipeng", when this user use \\join ruifeng room1, it will refuse to do it, and send back the message say" your nickname is shipeng , you can only join a room with your own nickname"
 
