@@ -232,7 +232,8 @@ int add_User_in_existing_Room(int connfd, char *nickname, int room_id){
 int get_room_userlist(char *room_name){//printout list of user in this room, can just printout nicknames.
   //since room id isnot needed.
   return 0;
-}
+}// not sure why this function still existed.
+
 // int create_room_backup(char *room_name, char *user_name){// create room if room is not existed, and add the user.
 //   //if room is existed and not full , we add the user.
 //   pthread_mutex_lock(&room);
@@ -294,34 +295,38 @@ int is_room_name_existing(char *room_name){
 
 
 
-int leave_room(char *nickname,int room_id){
-  int tempSocket=-1;
-  for(int i=0;i<MAX_CLIENTS;i++){
-    char *tempName=User_list[i].user_name;
-    if(strcmp(nickname,tempName)==0)
+int leave_room(char *nickname,int room_id){ // this function will let user leave a room.
+  int tempSocket=-1;//create a temp socket number for compare.
+  for(int i=0;i<MAX_CLIENTS;i++){ //search who server. loop it.
+    char *tempName=User_list[i].user_name;//find a user name who in the server.
+    if(strcmp(nickname,tempName)==0)// if we find this user.
     {
-      tempSocket=User_list[i].socket;
+      tempSocket=User_list[i].socket;//we find this socket and saved in tempsocket.
     }
   }
 
-  for(int i=0;i<MAX_ROOM_NUM;i++){
-    if(tempSocket==Room_list[room_id].socket_list_in_Room[i])
+  for(int i=0;i<MAX_ROOM_NUM;i++){//search whole room
+    if(tempSocket==Room_list[room_id].socket_list_in_Room[i])//if we find this use's socket.
     {
-      Room_list[room_id].socket_list_in_Room[i]=-1;
-      return 1;
+      Room_list[room_id].socket_list_in_Room[i]=-1;//we will set this socket to -1, which is disconnected.
+      //im not sure if this will do this job or not ,you may need to check.
+
+      return 1;//return 1 successed
     }
     
   }
-  return -1;
+  return -1;//return -1 if we can not find this user.
+
 }
 
-int check_user_in_which_room(char *nickname){
+int check_user_in_which_room(char *nickname){ //check user in which room 
+	//which is /where command.
   
-  for(int i=0;i<MAX_CLIENTS;i++){
+  for(int i=0;i<MAX_CLIENTS;i++){ //loop whole server ,and return room id. or -1 if not existed.
     char *tempName=User_list[i].user_name;
-    if(strcmp(nickname,tempName)==0)
+    if(strcmp(nickname,tempName)==0)//check name if same.
     {
-      return User_list[i].room_id;
+      return User_list[i].room_id;//return room id
     }
   }
  // we can simply this function, since we do not need pointer.
@@ -333,19 +338,20 @@ int check_user_in_which_room(char *nickname){
   return -1;
 }
 
-const char * check_username_by_socket(int connfd){
+const char * check_username_by_socket(int connfd){ //this will get name by socket number // have error on this part.
+
   printf("connfd is %d",connfd);
-  for(int i=0;i<MAX_CLIENTS;i++){
+  for(int i=0;i<MAX_CLIENTS;i++){//loop whole server.
     printf("searching %d" ,i);
-    int tempSocket=User_list[i].socket;
+    int tempSocket=User_list[i].socket;//socket of users.
     printf("socketnumber is %d",tempSocket);
-    if(connfd == tempSocket)
+    if(connfd == tempSocket)//if we find matched socket.
     {
       printf("FIND name %s" ,User_list[i].user_name);
-      return User_list[i].user_name;
+      return User_list[i].user_name;//we return this name or -1 if none-existed.
     }
   }
-  return 0;
+  return -1;
 }
 
 int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create room if room is not existed, and add the user.
@@ -359,10 +365,16 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   //    create_room() - create a new Room
   // return success
   ***/
-  int room_id = check_user_in_which_room(nickname);
-  int temp_leave_room = leave_room(nickname,room_id);
-  if(temp_leave_room == 1){
+  int room_id = check_user_in_which_room(nickname);//we change user in which room.
 
+  int temp_leave_room = leave_room(nickname,room_id);//then we leave this room.
+  if(temp_leave_room == 1){// if we successed leaved room.
+  	//here , we need a new function 
+  	//to check new nickname 
+  	//write a new help function
+  	//Change_name(int connfd, char *nickname)
+  	//change their name in server by unique name
+  	//when he jion the new room, it will show up the new name i think.
   if(int r_id = is_room_name_existing(room_name) > -1){  // if there is existing room with same name
     add_User_in_existing_Room(connfd, nickname, r_id);  // add 
   } else {  // nope? then we need to create a new room
@@ -568,7 +580,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     if(strncmp(message, "\\JOIN",5) == 0){
       printf("%s\n","it is \\JOIN nickname room" );
       string_to_token(message);//convert to tokens
-      if(!array[1]||!array[2]){
+      if(!array[1]||!array[2]){// if array[1][2]is null, it will send back the message.
         printf("%s \n","make sure you have 3 arguments");
         return send_message(connfd, (char *)"command not recognized,make sure you have 3 arguments");
       }
