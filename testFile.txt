@@ -1,0 +1,6 @@
+\JOIN nickname room
+\ROOMS
+\LEAVE
+\WHO
+\HELP
+\nickname message
