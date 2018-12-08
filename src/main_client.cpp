@@ -31,31 +31,29 @@ int main(int argc, char *argv[]){
 			exit(1);
   	}
 
-	char user_name[USRNAME_SIZE] = "client";
-	char buffer[BUF_SIZE];
+	  char user_name[USRNAME_SIZE] = "client";
+    char buffer[BUF_SIZE];
 
-	while(true){
-		printf("%s: ", user_name);
-		fgets(buffer, sizeof(buffer), stdin);	// read whole line including '\n'
-		if(buffer[0]!='\n') buffer[strlen(buffer)-1] = '\0';	// delete '\n' from the input string unless if user input only ENTER.
+    while(true){
+      printf("%s: ", user_name);
+		  fgets(buffer, sizeof(buffer), stdin);	// read whole line including '\n'
+		  if(buffer[0]!='\n') buffer[strlen(buffer)-1] = '\0';	// delete '\n' from the input string unless if user input only ENTER.
 
-		try{
-			c.sendMessage(buffer);
-		}catch(int status){
-			if(status==SOCKET_EX)
-  				printf("[-]Error in creating socket.\n");
-  			else if(status==CONNECTION_EX)
-  				printf("[-]Error in creating connection.\n");
-  			else if(status==BUF_SIZE_EX)
-				printf("[-]Error in too large sending message.\n");
-			else if(status==RECEIVE_EX)
-				printf("[-]Error in receiving data.\n");
+		  try{
+			   c.sendMessage(buffer);
+		  }catch(int status){
+			   if(status==SOCKET_EX)
+  				  printf("[-]Error in creating socket.\n");
+  			 else if(status==CONNECTION_EX)
+  				  printf("[-]Error in creating connection.\n");
+  			 else if(status==BUF_SIZE_EX)
+				    printf("[-]Error in too large sending message.\n");
+			   else if(status==RECEIVE_EX)
+				    printf("[-]Error in receiving data.\n");
 
-			if(status==LEAVE_EX || status==SOCKET_EX || status == CONNECTION_EX)
-				exit(1);
-		}
-	}
-
+			   if(status==LEAVE_EX || status==SOCKET_EX || status == CONNECTION_EX)
+				    exit(1);
+		  }
+	  }
   	return 0;
-
 }

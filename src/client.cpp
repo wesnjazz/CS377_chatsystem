@@ -7,6 +7,7 @@
 #define BUF_SIZE_EX 3
 #define RECEIVE_EX 4
 #define LEAVE_EX 5
+#define MESSAGE_LINES 30
 
 Client::Client(int portInst){
 	port=portInst;
@@ -38,24 +39,27 @@ void Client::connecting(){
 	if(connection_status<0){
 		throw CONNECTION_EX;
 	}
-	printf("[+]Connected so Server.\n");
+	printf("[+]Connected to Server.\n");
 }
 
 string* Client::readFile(string fileName){
 
 	ifstream file(fileName.c_str());
-	int max_line=30;
-	string* info=new string[max_line];
+	string* info=new string[MESSAGE_LINES];
+
   	if (file.is_open())
   	{
   		int i=0;
     	while (getline(file,info[i])
-    		&& i<max_line){
+    		&& i<MESSAGE_LINES){
     		i++;
     	}
+    	file.close();
     }
-
-    file.close();
+    else{
+    	printf("[-]Not such file exits.\n");
+    }
+    return info; 
 }
 
 void Client::sendMessage(char* inputBuffer){
@@ -80,6 +84,7 @@ void Client::sendMessage(char* inputBuffer){
 		&&strncmp(outputBuffer, "GoodBye",9) == 0){
 
 		close(socket_status);
+		socket_status=-1;
 		printf("[-]Disconnected from server.\n");
 		throw LEAVE_EX;
 	}
