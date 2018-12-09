@@ -109,12 +109,37 @@ void init_Rooms_Users_Messages(){
   initRoom.room_name[0] = '\0';
   initRoom.room_id = -1;
   initRoom.num_users = 0;
-  initRoom.socket_list_in_Room[0] = -1;
+  for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
+    initRoom.socket_list_in_Room[i] = -1;
+  }
+  // initRoom.socket_list_in_Room[0] = -1;
   for(int i=0; i<MAX_ROOM_NUM; i++){
     Room_list[i] = initRoom;
   }
 }
-
+void print_Room(int r_id){
+  printf("Room_list[%d] - room_name: %s  -  room_id: %d  -  num_users: %d\n",
+          r_id, Room_list[r_id].room_name, Room_list[r_id].room_id, Room_list[r_id].num_users);
+}
+void print_User(int u_id){
+  printf("User_list[%d] - user_name: %s  -   socket: %d  -  room_id: %d\n",
+          u_id, User_list[u_id].user_name, User_list[u_id].socket, User_list[u_id].room_id);
+}
+void print_Room_list(){
+  for(int r_id=0; r_id<MAX_ROOM_NUM; r_id++){
+    // printf("Room[%d]: %s\n", i, Room_list[i].room_name);
+    printf("Room_list[%d] - room_name: %s  -  room_id: %d  -  num_users: %d\n",
+        r_id, Room_list[r_id].room_name, Room_list[r_id].room_id, Room_list[r_id].num_users);
+  }
+}
+void print_Room_socket_list(int r_id){
+  for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
+    if(Room_list[r_id].socket_list_in_Room[i] != -1) {
+      printf("%3d", Room_list[r_id].socket_list_in_Room[i]);
+    }
+  }
+  printf("\n");
+}
 
 
 
@@ -211,6 +236,7 @@ int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
   strcpy(User_list[idx].user_name, nickname);
   User_list[idx].socket = connfd;
   User_list[idx].room_id = room_id;
+  print_User(idx);
   return idx;
 }
 // int add_User_in_User_list(User user){  // add an User into User_list[]
@@ -229,7 +255,7 @@ int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
 //   // return -1; // couldn't find empty slot, or there was an error
 // }
 int find_empty_spot_socket_list_in_Room(int room_id);
-int add_User_in_Room(int user_idx, int room_id, int empty_socket_idx){
+int add_User_in_Room(int user_idx, int room_id){
   /***
     purpose:  adding a User into existing Room
     assumption: room_id of the existing Room is found,
@@ -256,6 +282,7 @@ int add_User_in_Room(int user_idx, int room_id, int empty_socket_idx){
   //   newUser.room_id = room_id;  // mark the room_id which this User belongs to currently
   //   add_User_in_User_list(newUser); // add this User of corresponding socket(client) into User_list[]
   // }
+  print_Room_list();
   return 1;
 }
 int change_nickname(int idx, char *nickname){
@@ -375,16 +402,17 @@ int create_new_Room(char *room_name){
   // Room_list[x] = newRoom; // put this Room into Room_list[], index number and room_id is always matched
   increase_number_of_room_list();  // increate number_of_roomlist
   pthread_mutex_unlock(&room);
-  return num_room_list;
+  return empty_room_idx;
 }
 int is_room_name_existing(char *room_name){
-  for(int i=0; i<get_number_of_room_list(); i++){
+  printf("\tchecking is_room_name_existing() with %s\n", room_name);
+  for(int i=0; i<MAX_ROOM_NUM; i++){
     if (strcmp(Room_list[i].room_name, room_name) == 0 ){ // there is an existing room with the same name
-      printf("Existing a room with the name %s\n", room_name);
+      printf("\tExisting a room with the name %s\n", room_name);
       return Room_list[i].room_id; // return room_id
     }
   }
-  printf("No such name of room existing %s\n", room_name);
+  printf("\tNo such name of room existing %s\n", room_name);
   return -1;  // there is no room with the same name
 }
 // int leave_room(char *nickname,int room_id){ // this function will let user leave a room.
@@ -443,12 +471,17 @@ int remove_Room_from_list(int room_id){
   }  
 }
 int leave_room(int user_idx, int old_room_id, int socket_idx){ // leave the current Room
+  printf("Leaving Room\n");
+  print_Room_list();
+  print_Room(old_room_id);
   Room_list[old_room_id].socket_list_in_Room[socket_idx] = -1;
   Room_list[old_room_id].num_users--;
   // User_list[user_idx].room_id = -1;
-  if(Room_list[old_room_id].num_users == 0){
+  if(strcmp(Room_list[old_room_id].room_name, (char *)"Lobby") != 0 && Room_list[old_room_id].num_users <= 0){
+    printf("Removing the Room\n");
     remove_Room_from_list(old_room_id);
   }
+  print_Room_list();
 }
 
 int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create room if room is not existed, and add the user.
@@ -472,31 +505,95 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   	//Change_name(int connfd, char *nickname)
   	//change their name in server by unique name
     //when he jion the new room, it will show up the new name i think.
+
+  // find if a room of same name existing. 
+  // return value: -1:not existing. other values:room_id of the room
   int room_id = is_room_name_existing(room_name);
-  if( room_id < 0){  // if there is existing room with same name
-    if (get_number_of_room_list() >= MAX_ROOM_NUM) { return -1; }
-    room_id = create_new_Room(room_name);
-  }
-  int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);
-  if (empty_socket_idx < 0){
-    return -1;
-  }
-  // check if this client(socket) is an existing user
+  // find the index of User_list[] by socket
   int user_idx = get_User_list_index_by_socket(connfd);
-  if( user_idx < 0) { // return value: index at User_list[], -1:not existing
-    user_idx = find_empty_spot_in_User_list(); // find an empty slot to create new User
+
+  printf("\texisting room_id: %d\n", room_id);
+  printf("\texisting user_id: %d\n", user_idx);
+
+  char old_room_name[MAX_ROOM_NAME] = "";
+  strcpy(old_room_name, Room_list[User_list[user_idx].room_id].room_name);
+
+  if(user_idx < 0){
+    user_idx = find_empty_spot_in_User_list();
     create_new_User_at(user_idx, connfd, nickname, room_id);  // create a new User at index
-  } else {  // if the user is existing
+    add_User_in_Room(user_idx, room_id);
+    return 1;
+  }
+  // 1. Check if trying to using same name
+  if(strcmp(User_list[user_idx].user_name, nickname) != 0){
+    printf("\tchanging nickname from %s to %s\n", User_list[user_idx].user_name, nickname);
+    change_nickname(user_idx, nickname);  // change nickname
+  }
+  // 2. Check if the Room is not existing
+  if(room_id < 0){
+    printf("\tNon-Existing Room!\n");
+    // there is no such Room with that name
+    if (get_number_of_room_list() >= MAX_ROOM_NUM) { 
+      printf("\tMax number of Rooms reached!\n");
+      return -1;
+    }
+    room_id = create_new_Room(room_name);
+    printf("\tcreated room_id: %d\n", room_id);
+  // }
+  // 3. Check if trying to enter same name Room
+  // print_User(user_idx);
+  // print_Room(room_id);
+  }
+  printf("\told_room_name: %s\n", old_room_name);
+  printf("\tRoom_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
+  if(strcmp(Room_list[room_id].room_name, old_room_name) != 0){
+    printf("\tgetting into different Room\n");
+    // User is trying to enter different Room
+    int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);  // find an empty spot in that Room
+    if(empty_socket_idx < 0){
+      printf("\tNo more Users in the Room!\n");
+      return -1;
+    }
+    // print_User(user_idx);
+    // print_Room(room_id);
     int old_room_id = User_list[user_idx].room_id;
     int socket_idx = find_User_socket_idx_from_Room(connfd, old_room_id);
     leave_room(user_idx, old_room_id, socket_idx); // leave the current Room
-    change_nickname(user_idx, nickname);
+    add_User_in_Room(user_idx, room_id);
   }
-  add_User_in_Room(user_idx, room_id, empty_socket_idx);  // add the user into the existing room
+  return 1;
+
+  // if( room_id < 0){  // if there is existing room with same name
+  //   if (get_number_of_room_list() >= MAX_ROOM_NUM) { 
+  //     printf("\tMax number of Rooms reached!\n");
+  //     return -1;
+  //   }
+  //   room_id = create_new_Room(room_name);
+  //   printf("   created room_id: %d\n", room_id);
+  // }
+  // int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);
+  // if (empty_socket_idx < 0){
+  //   printf("\tNo more Users in the Room!\n");
+  //   return -1;
+  // }
+  // // check if this client(socket) is an existing user
+  // int user_idx = get_User_list_index_by_socket(connfd);
+  // if( user_idx < 0) { // return value: index at User_list[], -1:not existing
+  //   printf("\tNon-Existing User!\n");
+  //   user_idx = find_empty_spot_in_User_list(); // find an empty slot to create new User
+  //   create_new_User_at(user_idx, connfd, nickname, room_id);  // create a new User at index
+  // } else {  // if the user is existing
+  //   printf("\tExisting User!\n");
+  //   int old_room_id = User_list[user_idx].room_id;
+  //   int socket_idx = find_User_socket_idx_from_Room(connfd, old_room_id);
+  //   leave_room(user_idx, old_room_id, socket_idx); // leave the current Room
+  //   change_nickname(user_idx, nickname);
+  // }
+  // add_User_in_Room(user_idx, room_id, empty_socket_idx);  // add the user into the existing room
 
        // if number of room is full //leave the old room.
   // }
-  return 1;
+  // return 1;
 }
 
 
@@ -620,7 +717,8 @@ int send_roomlist_message(int connfd){
   strcat(list_buffer, preprefix);
   strcat(list_buffer, temp);
   
-  for(int i=0;i<num_room_list;i++){
+  for(int i=0;i<MAX_ROOM_NUM;i++){
+    if (Room_list[i].room_id < 0) { continue; }
     strcat(list_buffer, "\n");
     strcat(list_buffer, prefix);  // add prefix
     int temp_int = Room_list[i].room_id;  // get room_id
@@ -630,7 +728,7 @@ int send_roomlist_message(int connfd){
     strcat(list_buffer, Room_list[i].room_name); // add room_name
     
   }
-  printf("Sneding: %s\n", list_buffer);
+  printf("Sending: %s\n", list_buffer);
   return send_message(connfd, list_buffer);
 }
 /* Command: \WHO */
@@ -750,7 +848,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     // Bug: if the command is not made of three words, e.g., just "\JOIN", then this will crash.
     //      we should deal with those edge cases.
     if(strncmp(message, "\\JOIN",5) == 0){
-      printf("%s\n","it is \\JOIN nickname room" );
+      printf("%s\n","\\JOIN nickname room" );
       string_to_token(message);//convert to tokens
       if(!token_array[1]||!token_array[2]){// if token_array[1][2]is null, it will send back the message.
         printf("%s \n","make sure you have 3 arguments");
@@ -758,19 +856,20 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       }
       //token_array[1] is nickname
       //token_array[2] is room name
-      printf("\n the room name is %s", token_array[2]);
-      printf("nickname:%s\n", token_array[1]);
+      printf("\n[socket%d]Trying to make a Room: %s", connfd, token_array[2]);
+      printf("\tNickname: %s\n", token_array[1]);
       // we can safely call JOIN_Nickname_Room() without any considerations here.
       // the function will deal with any cases.
       if(JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]) == -1){
-        return send_message(connfd, (char *)"Error creating a room");
+        return send_message(connfd, (char *)"[-]Error creating a room");
       }
 
-      return send_message(connfd, (char *)"Created a room");
+      return send_message(connfd, (char *)"[+]Created a room");
     }
     else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
-            printf("%s\n","it is \\ROOMS" );
+            printf("%s\n","\\ROOMS" );
             // printf("%s\n", get_room_list());
+            print_Room_list();
             return send_roomlist_message(connfd);
     }
     else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
@@ -779,12 +878,12 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
 
     }
     else if(strncmp(message, "\\WHERE", 5) == 0){
-      printf("%s\n","it is \\WHERE" );
+      printf("%s\n","\\WHERE" );
       return send_where_message(connfd, message);
 
     }
     else if(strcmp(message, "\\WHO") == 0){//this part is fine
-          printf("%s\n","it is \\WHO" );
+          printf("%s\n","\\WHO" );
           return send_userlist_message(connfd);
     }
     else if(strcmp(message, "\\HELP") == 0){//this part is fine
@@ -795,7 +894,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
     }
     else{
-      char tempMessage[1024] =" command not recognized";//this part is fine
+      char tempMessage[30] =" [-] command not recognized";//this part is fine
       strcat(message,tempMessage);
       printf("%s\n ", message);
       return send_message(connfd,message);
@@ -818,10 +917,18 @@ void simple_message(int connfd){
   defaultUser.socket = connfd;  // match this User object and the connected socket(client)
   defaultUser.room_id = 0;
 
+  // create_new_Room((char *)"Lobby");
   JOIN_Nickname_Room(connfd, (char *)DEFAULT_USR_NAME, (char *)"Lobby");
+
+  // find the index of User_list[] by socket
 
   while((n=receive_message(connfd, message))>0) {
     printf("From socket[%d]: Server received a meesage of %d bytes: %s\n", connfd, (int)n, message);
+    int user_idx = get_User_list_index_by_socket(connfd);
+    int room_id = is_room_name_existing(Room_list[User_list[user_idx].room_id].room_name);
+    print_User(user_idx);
+    print_Room(room_id);
+
     n = process_message(connfd, message);
     bzero(message, sizeof(message));  // reintialize the message[] buffer
   }
@@ -905,6 +1012,8 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
 
   initialize_sockets();
   print_sockets();
+  create_new_Room((char *)"Lobby");
+
   while(1){
     // The connection file descriptor.
     int *connfdp = (int *)malloc(sizeof(int));
