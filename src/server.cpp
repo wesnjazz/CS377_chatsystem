@@ -32,7 +32,7 @@ using namespace std;
 #define MAX_ROOM_NUM 20
 #define MAX_USER_IN_A_ROOM 20
 
-#define MAX_USER_NAME 30
+#define MAX_USER_NAME 15
 #define MAX_ROOM_NAME 30
 #define MAX_MSG_CHAR 100
 
@@ -107,10 +107,17 @@ pthread_mutex_t room;
 
 // We will use this as a simple circular buffer of incoming messages.
 char message_buf[BUF_MAX_20LINES][BUF_MAX_50CHARS];
+char entire_message_buf[BUF_MAX_20LINES * BUF_MAX_50CHARS];
 
 // This is an index into the message buffer.
 int msgi = 0;
 
+
+// Initialize the message buffer to empty strings.
+void init_entire_message_buf() {
+  bzero(entire_message_buf, sizeof(entire_message_buf));
+}
+int init_chat_buffer_in_Room(int room_id);
 void init_Rooms_Users_Messages(){ 
   User initUser;
   initUser.user_name[0] = '\0';
@@ -133,6 +140,7 @@ void init_Rooms_Users_Messages(){
   initRoom.chat_buffer_TAIL = 0;
   for(int i=0; i<MAX_ROOM_NUM; i++){
     Room_list[i] = initRoom;
+    init_chat_buffer_in_Room(i);
   }
 }
 void print_Room(int r_id){
@@ -176,13 +184,32 @@ void print_Room_socket_list(int r_id){
 /********************************
   CHAT_BUFFER (Circular Buffer)
 ********************************/
+int add_title_into_chat_buffer(int room_id, int head){
+  // chat_buffer[] will always have the title message which displays Room name and number at the HEAD
+  // e.g., "---------- Room[11]: Bohemians ----------"
+  // ***NOTE*** this buffer does not increase HEAD. Caller function should increase HEAD manually.
+  char title[BUF_SMALL_300] = "---------- Room[";
+  char buf[5]="";
+  bzero(buf, sizeof(buf));
+  sprintf(buf, "%d", room_id);
+  strcat(title, buf);
+  strcat(title, (char *)"]: ");
+  strcat(title, Room_list[room_id].room_name);
+  strcat(title, (char *)" ----------");
+  
+  strcpy(Room_list[room_id].chat_buffer[head], title);
+}
 int init_chat_buffer_in_Room(int room_id){
   /** initialize Chat_Buffer in a Room by writing zeros **/
   for(int i=0; i<BUF_MAX_20LINES; i++){
     bzero(Room_list[room_id].chat_buffer[i], BUF_MAX_50CHARS);
   }
+  add_title_into_chat_buffer(room_id, 0); 
+  Room_list[room_id].chat_buffer_HEAD = 0;
+  Room_list[room_id].chat_buffer_TAIL = 0;
 }
-int add_message_into_chat_buffer(int room_id, char *message){
+int get_User_list_index_by_socket(int connfd);
+int add_message_into_chat_buffer(int connfd, int room_id, char *message){
   /**
     TAIL++
     if TAIL > max_index
@@ -191,12 +218,97 @@ int add_message_into_chat_buffer(int room_id, char *message){
       HEAD++
       if HEAD > max_index
         HEAD =0
+      HEAD <- title msg
     buf[TAIL] = msg
-    
   **/
+
+  int tail = Room_list[room_id].chat_buffer_TAIL;
+  int head = Room_list[room_id].chat_buffer_HEAD;
+  char prefix[30];
+  bzero(prefix, sizeof(prefix));
+  int user_idx = get_User_list_index_by_socket(connfd);
+  strncpy(prefix, User_list[user_idx].user_name, MAX_USER_NAME);
+  strcat(prefix, (char *)": ");
+
+  tail++;
+  if (tail >= BUF_MAX_20LINES){
+    tail = 0;
+  }
+  if (tail <= head){
+    head++;
+    if (head >= BUF_MAX_20LINES){
+      head = 0;
+    }
+    // strcpy(Room_list[room_id].chat_buffer[head], title);
+    add_title_into_chat_buffer(room_id, head);
+    Room_list[room_id].chat_buffer_HEAD = head;
+  }
+  strcat(prefix, message);
+  printf("\tprefix: %s\n", prefix);
+  strncpy(Room_list[room_id].chat_buffer[tail], prefix, BUF_MAX_50CHARS-1);
+  Room_list[room_id].chat_buffer_TAIL = tail;
 }
+void get_chat_buffer(int room_id){
+  printf("\tget_chat_buffer() begin\n");
+  char entire_message[BUF_MAX_20LINES * BUF_MAX_50CHARS];
+  bzero(entire_message, sizeof(entire_message));
 
-
+  int tail = Room_list[room_id].chat_buffer_TAIL;
+  int head = Room_list[room_id].chat_buffer_HEAD;
+  
+  if(tail>head){
+    for(int i=head; i<tail; i++){
+      strcat(entire_message, Room_list[room_id].chat_buffer[i]);
+    }
+  }
+  else{
+    for(int i=head; i<BUF_MAX_20LINES; i++){
+      strcat(entire_message, Room_list[room_id].chat_buffer[i]);
+    }
+    for(int i=0; i<=tail; i++){
+      strcat(entire_message, Room_list[room_id].chat_buffer[i]);
+    }
+  }
+  printf("\tentire_message:\n\t%s\n", entire_message);
+  printf("\tget_chat_buffer() finish\n");
+  // return entire_message;
+}
+void print_chat_buffer(int room_id){
+  for(int i=0; i<BUF_MAX_20LINES; i++){
+    printf("%3d: %s\n", i, Room_list[room_id].chat_buffer[i]);
+  }
+}
+int create_entire_message_from_chat_buffer(int room_id){
+  printf("\tcreate_entire_message_from_chat_buffer() begin\n");
+  printf("\tbefore init: %s\n", entire_message_buf);
+  init_entire_message_buf();
+  printf("\t after init: %s\n", entire_message_buf);
+  int tail = Room_list[room_id].chat_buffer_TAIL;
+  int head = Room_list[room_id].chat_buffer_HEAD;
+  printf("\t head: %d  tail: %d\n", head, tail);
+  
+  if(tail>head){
+    for(int i=head; i<=tail; i++){
+      printf("\t\tputting msg[%d]: %s\n", i, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, (char *)"\n");
+    }
+  }
+  else{
+    for(int i=head; i<BUF_MAX_20LINES; i++){
+      printf("\t\tputting msg[%d]: %s\n", i, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, (char *)"\n");
+    }
+    for(int i=0; i<=tail; i++){
+      printf("\t\tputting msg[%d]: %s\n", i, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, (char *)"\n");
+    }
+  }
+  printf("\tcreate_entire_message_from_chat_buffer() finish\n");
+  return 1;
+}
 
 
 
@@ -521,6 +633,7 @@ int remove_Room_from_list(int room_id){
     Room_list[room_id].num_users = 0;
     Room_list[room_id].room_name[0] = '\0';
     Room_list[room_id].socket_list_in_Room[0] = -1;
+    init_chat_buffer_in_Room(room_id);
     decrease_number_of_room_list();
   }  
 }
@@ -652,6 +765,9 @@ int receive_message(int connfd, char *message) {
 }
 // A wrapper around send to simplify calls.
 int send_message(int connfd, char *message) {
+  printf("\tsend_message() begin\n");
+  printf("\tmessage size: %d\n", strlen(message));
+  printf("\tmessage: %s\n", message);
   return send(connfd, message, strlen(message), 0);
 }
 // This function adds a message that was received to the message buffer.
@@ -861,7 +977,22 @@ int send_helplist_message(int connfd) { // this part do not need help list.
 
   return send_message(connfd, message);
 }
-
+int send_chat_message(int connfd, char *message){
+  printf("\tgot message from client[%d]: %s\n", connfd, message);
+  int user_idx = get_User_list_index_by_socket(connfd);
+  int room_id = User_list[user_idx].room_id;
+  printf("\t\t\tmessage length: %d\n", strlen(message));
+  if(strlen(message) > 0 && strcmp(message, "\n") != 0) {
+    printf("before add_message()\n");
+    add_message_into_chat_buffer(connfd, room_id, message);
+    printf("after add_message()\n");
+    print_chat_buffer(room_id);
+  }
+  create_entire_message_from_chat_buffer(room_id);
+  printf("\tentire_message_buf: %s\n", entire_message_buf);
+  return send_message(connfd, entire_message_buf);
+  // return send_message(connfd, get_chat_buffer(room_id));
+}
 
 int process_message(int connfd, char *message) {//idk if we can use case switch
   
@@ -924,8 +1055,10 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     return send_ROOM_message(connfd);
   } 
   else {//this part is fine
-    printf("Server responding with echo response.\n");
-    return send_message(connfd, message);
+    printf("Server sending chat messages to clients.\n");
+    return send_chat_message(connfd, message);
+    // printf("Server responding with echo response.\n");
+    // return send_message(connfd, message);
   }
 }
 
