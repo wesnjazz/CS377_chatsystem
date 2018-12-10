@@ -37,7 +37,7 @@ using namespace std;
 #define MAX_MSG_CHAR 100
 
 #define BUF_MAX_20LINES 20
-#define BUF_MAX_75CHARS 85
+#define BUF_MAX_100CHARS 100
 #define BUF_SMALL_300 300
 
 #define DEFAULT_USR_NAME "ChangeName"
@@ -61,7 +61,7 @@ typedef struct Room{
   // Client list in a specific Room
   int socket_list_in_Room[MAX_USER_IN_A_ROOM];
   // Circular buffer which records all messages from clients in a specific Room
-  char chat_buffer[BUF_MAX_20LINES][BUF_MAX_75CHARS];
+  char chat_buffer[BUF_MAX_20LINES][BUF_MAX_100CHARS];
   // HEAD pointer of chat_buffer
   int chat_buffer_HEAD;
   // TAIL pointer of chat_buffer
@@ -106,8 +106,8 @@ pthread_mutex_t lock;
 pthread_mutex_t room;
 
 // We will use this as a simple circular buffer of incoming messages.
-char message_buf[BUF_MAX_20LINES][BUF_MAX_75CHARS];
-char entire_message_buf[BUF_MAX_20LINES * BUF_MAX_75CHARS];
+char message_buf[BUF_MAX_20LINES][BUF_MAX_100CHARS];
+char entire_message_buf[BUF_MAX_20LINES * BUF_MAX_100CHARS];
 
 // This is an index into the message buffer.
 int msgi = 0;
@@ -134,7 +134,7 @@ void init_Rooms_Users_Messages(){
     initRoom.socket_list_in_Room[i] = -1;
   }
   for(int i=0; i<BUF_MAX_20LINES; i++){
-    bzero(initRoom.chat_buffer[i], BUF_MAX_75CHARS);
+    bzero(initRoom.chat_buffer[i], BUF_MAX_100CHARS);
   }
   initRoom.chat_buffer_HEAD = 0;
   initRoom.chat_buffer_TAIL = 0;
@@ -202,7 +202,7 @@ int add_title_into_chat_buffer(int room_id, int head){
 int init_chat_buffer_in_Room(int room_id){
   /** initialize Chat_Buffer in a Room by writing zeros **/
   for(int i=0; i<BUF_MAX_20LINES; i++){
-    bzero(Room_list[room_id].chat_buffer[i], BUF_MAX_75CHARS);
+    bzero(Room_list[room_id].chat_buffer[i], BUF_MAX_100CHARS);
   }
   add_title_into_chat_buffer(room_id, 0); 
   Room_list[room_id].chat_buffer_HEAD = 0;
@@ -224,13 +224,13 @@ int add_message_into_chat_buffer(int connfd, int room_id, char *message){
 
   int tail = Room_list[room_id].chat_buffer_TAIL;
   int head = Room_list[room_id].chat_buffer_HEAD;
-  message[BUF_MAX_75CHARS - MAX_USER_NAME - 3]='\0';
+  message[BUF_MAX_100CHARS - MAX_USER_NAME - 3]='\0';
 
   printf("\t\t\t\t\t\t[head:%d tail:%d]\n", head, tail);
   if(head == tail){
     add_title_into_chat_buffer(room_id, head);
   }
-  char prefix[BUF_MAX_75CHARS];
+  char prefix[BUF_MAX_100CHARS];
   bzero(prefix, sizeof(prefix));
   int user_idx = get_User_list_index_by_socket(connfd);
   strncpy(prefix, User_list[user_idx].user_name, MAX_USER_NAME);
@@ -251,12 +251,12 @@ int add_message_into_chat_buffer(int connfd, int room_id, char *message){
   }
   strcat(prefix, message);
   printf("\tprefix: %s\n", prefix);
-  strncpy(Room_list[room_id].chat_buffer[tail], prefix, BUF_MAX_75CHARS-1);
+  strncpy(Room_list[room_id].chat_buffer[tail], prefix, BUF_MAX_100CHARS-1);
   Room_list[room_id].chat_buffer_TAIL = tail;
 }
 void get_chat_buffer(int room_id){
   printf("\tget_chat_buffer() begin\n");
-  char entire_message[BUF_MAX_20LINES * BUF_MAX_75CHARS];
+  char entire_message[BUF_MAX_20LINES * BUF_MAX_100CHARS];
   bzero(entire_message, sizeof(entire_message));
 
   int tail = Room_list[room_id].chat_buffer_TAIL;
@@ -882,7 +882,7 @@ int send_roomlist_message(int connfd){
 }
 /* Command: \WHO */
 int send_userlist_message(int connfd) { 
-  char message[BUF_MAX_20LINES * BUF_MAX_75CHARS] = "";
+  char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
   int tempRoom_ID = -1;
   for(int i=0;i<MAX_CLIENTS;i++){
     int tempSocket = User_list[i].socket;
@@ -966,7 +966,7 @@ int send_where_message(int connfd, char *message){
 
 int send_helplist_message(int connfd) { // this part do not need help list.
 
-  char message[BUF_MAX_20LINES * BUF_MAX_75CHARS] = "";
+  char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
   const char *temp_user_list[6];
     temp_user_list[0] = "\\JOIN nickname room";
     temp_user_list[1] = "\\ROOMS";
@@ -990,7 +990,7 @@ int send_helplist_message(int connfd) { // this part do not need help list.
 }
 int send_chat_message(int connfd, char *message){
   printf("\t\t\t\t\tstrlen(message):%d\n", strlen(message));
-  message[BUF_MAX_75CHARS-1]='\0';
+  message[BUF_MAX_100CHARS-1]='\0';
   printf("\tgot message from client[%d]: %s\n", connfd, message);
   int user_idx = get_User_list_index_by_socket(connfd);
   int room_id = User_list[user_idx].room_id;
