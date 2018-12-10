@@ -24,6 +24,7 @@ class Client {
 		void connecting();
 		void sendMessage(char* inputBuffer);
 		string* readFile(string fileName);
+		void init_outputBuffer();
 		
 		int getSocket(){return socket_status;			}
 		int getReceive(){return receive_status;			}

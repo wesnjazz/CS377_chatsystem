@@ -69,10 +69,11 @@ void Client::sendMessage(char* inputBuffer){
 
 	send(socket_status, inputBuffer, strlen(inputBuffer), 0);
 
+	init_outputBuffer();
 	receive_status =recv(socket_status, outputBuffer, BUF_SIZE, 0);
 	if(receive_status<0)
 		throw RECEIVE_EX;
-
+	system("clear");
 	printf("Server:\t\t %s\n", outputBuffer);
 
 
@@ -85,3 +86,6 @@ void Client::sendMessage(char* inputBuffer){
 	}
 }
 
+void Client::init_outputBuffer(){
+	bzero(outputBuffer, 2000);
+}
