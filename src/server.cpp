@@ -28,30 +28,44 @@ using namespace std;
 /**********************
   Structs
 ***********************/
+#define MAX_CLIENTS 100
+#define MAX_ROOM_NUM 20
+#define MAX_USER_IN_A_ROOM 20
+
 #define MAX_USER_NAME 30
 #define MAX_ROOM_NAME 30
 #define MAX_MSG_CHAR 100
 
-#define MAX_ROOM_NUM 20
-#define MAX_USER_IN_A_ROOM 20
-#define MAX_CLIENTS 100
-
 #define BUF_MAX_20LINES 20
-#define BUF_MAX_80CHARS 80
+#define BUF_MAX_50CHARS 50
 #define BUF_SMALL_300 300
 
 #define DEFAULT_USR_NAME "ChangeName"
 
 typedef struct User{
+  // User's nickname
   char user_name[MAX_USER_NAME];
+  // User's socket
   int socket;
+  // User's current location
   int room_id;
 } User;
 typedef struct Room{
+  // Room name
   char room_name[MAX_ROOM_NAME];
+  // room_id is matched with corresponding index of Room_list[],
+  // e.g., Room number 0 has room_id of 0 and it is at Room_list[0]
   int room_id;
+  // keep track a number of current clients in a specific Room
   int num_users;
+  // Client list in a specific Room
   int socket_list_in_Room[MAX_USER_IN_A_ROOM];
+  // Circular buffer which records all messages from clients in a specific Room
+  char chat_buffer[BUF_MAX_20LINES][BUF_MAX_50CHARS];
+  // HEAD pointer of chat_buffer
+  int chat_buffer_HEAD;
+  // TAIL pointer of chat_buffer
+  int chat_buffer_TAIL;
 } Room;
 typedef struct Message{
   char message[MAX_MSG_CHAR];
@@ -92,7 +106,7 @@ pthread_mutex_t lock;
 pthread_mutex_t room;
 
 // We will use this as a simple circular buffer of incoming messages.
-char message_buf[BUF_MAX_20LINES][BUF_MAX_80CHARS];
+char message_buf[BUF_MAX_20LINES][BUF_MAX_50CHARS];
 
 // This is an index into the message buffer.
 int msgi = 0;
@@ -112,7 +126,11 @@ void init_Rooms_Users_Messages(){
   for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
     initRoom.socket_list_in_Room[i] = -1;
   }
-  // initRoom.socket_list_in_Room[0] = -1;
+  for(int i=0; i<BUF_MAX_20LINES; i++){
+    bzero(initRoom.chat_buffer[i], BUF_MAX_50CHARS);
+  }
+  initRoom.chat_buffer_HEAD = 0;
+  initRoom.chat_buffer_TAIL = 0;
   for(int i=0; i<MAX_ROOM_NUM; i++){
     Room_list[i] = initRoom;
   }
@@ -141,6 +159,42 @@ void print_Room_socket_list(int r_id){
   printf("\n");
 }
 
+
+
+
+
+
+// Intended Space - Don't erase empty lines
+
+
+
+
+
+
+
+
+/********************************
+  CHAT_BUFFER (Circular Buffer)
+********************************/
+int init_chat_buffer_in_Room(int room_id){
+  /** initialize Chat_Buffer in a Room by writing zeros **/
+  for(int i=0; i<BUF_MAX_20LINES; i++){
+    bzero(Room_list[room_id].chat_buffer[i], BUF_MAX_50CHARS);
+  }
+}
+int add_message_into_chat_buffer(int room_id, char *message){
+  /**
+    TAIL++
+    if TAIL > max_index
+      TAIL = 0
+    if TAIL <= HEAD
+      HEAD++
+      if HEAD > max_index
+        HEAD =0
+    buf[TAIL] = msg
+    
+  **/
+}
 
 
 
@@ -562,38 +616,6 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     add_User_in_Room(user_idx, room_id);
   }
   return 1;
-
-  // if( room_id < 0){  // if there is existing room with same name
-  //   if (get_number_of_room_list() >= MAX_ROOM_NUM) { 
-  //     printf("\tMax number of Rooms reached!\n");
-  //     return -1;
-  //   }
-  //   room_id = create_new_Room(room_name);
-  //   printf("   created room_id: %d\n", room_id);
-  // }
-  // int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);
-  // if (empty_socket_idx < 0){
-  //   printf("\tNo more Users in the Room!\n");
-  //   return -1;
-  // }
-  // // check if this client(socket) is an existing user
-  // int user_idx = get_User_list_index_by_socket(connfd);
-  // if( user_idx < 0) { // return value: index at User_list[], -1:not existing
-  //   printf("\tNon-Existing User!\n");
-  //   user_idx = find_empty_spot_in_User_list(); // find an empty slot to create new User
-  //   create_new_User_at(user_idx, connfd, nickname, room_id);  // create a new User at index
-  // } else {  // if the user is existing
-  //   printf("\tExisting User!\n");
-  //   int old_room_id = User_list[user_idx].room_id;
-  //   int socket_idx = find_User_socket_idx_from_Room(connfd, old_room_id);
-  //   leave_room(user_idx, old_room_id, socket_idx); // leave the current Room
-  //   change_nickname(user_idx, nickname);
-  // }
-  // add_User_in_Room(user_idx, room_id, empty_socket_idx);  // add the user into the existing room
-
-       // if number of room is full //leave the old room.
-  // }
-  // return 1;
 }
 
 
@@ -733,7 +755,7 @@ int send_roomlist_message(int connfd){
 }
 /* Command: \WHO */
 int send_userlist_message(int connfd) { 
-  char message[BUF_MAX_20LINES * BUF_MAX_80CHARS] = "";
+  char message[BUF_MAX_20LINES * BUF_MAX_50CHARS] = "";
   int tempRoom_ID = -1;
   for(int i=0;i<MAX_CLIENTS;i++){
     int tempSocket = User_list[i].socket;
@@ -817,7 +839,7 @@ int send_where_message(int connfd, char *message){
 
 int send_helplist_message(int connfd) { // this part do not need help list.
 
-  char message[BUF_MAX_20LINES * BUF_MAX_80CHARS] = "";
+  char message[BUF_MAX_20LINES * BUF_MAX_50CHARS] = "";
   const char *temp_user_list[6];
     temp_user_list[0] = "\\JOIN nickname room";
     temp_user_list[1] = "\\ROOMS";
