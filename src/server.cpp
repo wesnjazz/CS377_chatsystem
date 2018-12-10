@@ -224,6 +224,10 @@ int add_message_into_chat_buffer(int connfd, int room_id, char *message){
 
   int tail = Room_list[room_id].chat_buffer_TAIL;
   int head = Room_list[room_id].chat_buffer_HEAD;
+  printf("\t\t\t\t\t\t[head:%d tail:%d]\n", head, tail);
+  if(head == tail){
+    add_title_into_chat_buffer(room_id, head);
+  }
   char prefix[30];
   bzero(prefix, sizeof(prefix));
   int user_idx = get_User_list_index_by_socket(connfd);
@@ -287,6 +291,10 @@ int create_entire_message_from_chat_buffer(int room_id){
   int head = Room_list[room_id].chat_buffer_HEAD;
   printf("\t head: %d  tail: %d\n", head, tail);
   
+  if(head==tail){
+    strcat(entire_message_buf, Room_list[room_id].chat_buffer[head]);
+    return 1;
+  }
   if(tail>head){
     for(int i=head; i<=tail; i++){
       printf("\t\tputting msg[%d]: %s\n", i, Room_list[room_id].chat_buffer[i]);
@@ -567,6 +575,7 @@ int create_new_Room(char *room_name){
   // newRoom.socket_list_in_Room[0] = connfd;  // add socket(client) into socket_list_in_Room at 0 because it is just created.
   // Room_list[x] = newRoom; // put this Room into Room_list[], index number and room_id is always matched
   increase_number_of_room_list();  // increate number_of_roomlist
+  add_title_into_chat_buffer(empty_room_idx, 0);
   pthread_mutex_unlock(&room);
   return empty_room_idx;
 }
