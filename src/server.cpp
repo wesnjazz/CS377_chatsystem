@@ -478,6 +478,9 @@ int check_user_in_which_room(char *nickname){ //check user in which room
   }
   return -1;
 }
+int check_user_id_by_nickname(char *nickname){
+
+}
 const char * check_username_by_socket(int connfd){ //this will get name by socket number // have error on this part.
 
   printf("connfd is %d",connfd);
@@ -977,15 +980,11 @@ int send_where_message(int connfd, char *message){
   // // strcat(message,temp_room_name);
 }
 
-int send_helplist_message(int connfd) { // this part do not need help list.
+int send_helplist_message(int connfd) { // this part do not need help list.】
 
-<<<<<<< HEAD
-  char message[BUF_MAX_20LINES * BUF_MAX_80CHARS] = "";
-  const char *temp_user_list[7];
-=======
   char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
   const char *temp_user_list[6];
->>>>>>> master
+
     temp_user_list[0] = "\\JOIN nickname room";
     temp_user_list[1] = "\\ROOMS";
     temp_user_list[2] = "\\LEAVE";
@@ -993,7 +992,7 @@ int send_helplist_message(int connfd) { // this part do not need help list.
     temp_user_list[4] = "\\nickname message";
     temp_user_list[5] = "\\HELP";
     temp_user_list[6] = "\\WHERE";
-    temp_user_list[7] = "\\WHERE nickname";
+  // temp_user_list[7] = "\\WHERE nickname";
   for (int i = 0; i < 6; i++) {
     if (strcmp(temp_user_list[i], "") == 0) break;//room list
     strcat(message, temp_user_list[i]);//room list
@@ -1007,6 +1006,17 @@ int send_helplist_message(int connfd) { // this part do not need help list.
   printf("Sending: %s", message);
 
   return send_message(connfd, message);
+}
+int send_whisper_message(int connfd, int whisper_target, char *message){
+  int user_idx = get_User_list_index_by_socket(connfd);
+  char whisper_msg[BUF_SMALL_300];
+  bzero(whisper_msg, sizeof(whisper_msg));
+  strcat(whisper_msg, (char *)"Whisper[");
+  strcat(whisper_msg, User_list[user_idx].user_name);
+  strcat(whisper_msg, (char *)"]:");  
+  strcat(whisper_msg, message);
+  send_message(whisper_target, whisper_msg);
+  return send_message(connfd, whisper_msg);
 }
 int send_chat_message(int connfd, char *message){
   printf("\t\t\t\t\tstrlen(message):%d\n", strlen(message));
@@ -1046,11 +1056,21 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       printf("\tNickname: %s\n", token_array[1]);
       // we can safely call JOIN_Nickname_Room() without any considerations here.
       // the function will deal with any cases.
-      if(JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]) == -1){
-        return send_message(connfd, (char *)"[-]Error creating a room");
+      char msg_buf[MAX_ROOM_NAME + 30];
+      bzero(msg_buf, sizeof(msg_buf));
+      int join = JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]);
+      if(join <= -1){
+        strcpy(msg_buf, (char *)"[-]Error creating a room ");
+        strcat(msg_buf, token_array[2]);
+        return send_message(connfd, msg_buf);
       }
-
-      return send_message(connfd, (char *)"[+]Created a room");
+      if(strcmp(token_array[2], (char *)"Lobby") == 0) {
+        strcpy(msg_buf, (char *)"[+]Entering ");
+      } else {
+        strcpy(msg_buf, (char *)"[+]Created a Room ");
+      }
+      strcat(msg_buf, token_array[2]);
+      return send_message(connfd, msg_buf);
     }
     else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
             printf("%s\n","\\ROOMS" );
@@ -1059,9 +1079,11 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
             return send_roomlist_message(connfd);
     }
     else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
-      char message[1024] = "GoodBye";
-      return send_message(connfd, message);
-
+      char msg_buf[20] = "GoodBye";
+      send_message(connfd, msg_buf);
+      // close(connfd);
+      return 99;
+      // return send_message(connfd, message);
     }
     else if(strncmp(message, "\\WHERE", 5) == 0){
       printf("%s\n","\\WHERE" );
@@ -1077,14 +1099,64 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           printf("%s\n","it is \\HELP" );
           return send_helplist_message(connfd);
     }
-    else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
+    // else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
-    }
+    // }
     else{
-      char tempMessage[30] =" [-] command not recognized";//this part is fine
-      strcat(message,tempMessage);
-      printf("%s\n ", message);
-      return send_message(connfd,message);
+      // Check if the client is trying to WHISPER someone on the server.
+      char nick_buf[MAX_USER_NAME+10];  // buffer for storing the nickname
+      char mesg_buf[MAX_MSG_CHAR+10];
+      bzero(nick_buf, sizeof(nick_buf));  // initialize buffer
+      bzero(mesg_buf, sizeof(nick_buf));  // initialize buffer
+
+      int i = 1;  // first index of nickname array - token_array[0] has "\NICKNAME"
+      for(i=1; i<strlen(message); i++){  // extract a char at a time
+          // if((int)(*(message+i)) == 32) printf("WHITE SPACE!!!\n");
+          if (message+i == '\0' || (int)(*(message+i)) == 32) { break; }
+          strncat(nick_buf, message+i, 1);
+          if(i>=MAX_USER_NAME) { break; } // if the input user nickname is exceeded MAX_USER_NAME chars
+      }
+      if(i==MAX_USER_NAME) {
+        while(1){
+          if(*(message+i) != ' ') {
+            i++;
+          } else {
+            break;
+          }
+        }
+      }
+      for(i++; i<strlen(message); i++){  // extract a char at a time
+          if (message+i == '\0' || *(message+i) == '\n') { break; }
+          strncat(mesg_buf, message+i, 1);
+          if(i>=MAX_MSG_CHAR) { break; } // if the input user nickname is exceeded MAX_USER_NAME chars
+      }
+
+      printf("\n\t\tnick_buf: %s\n", nick_buf);
+      printf("\t\tmesg_buf: %s\n", mesg_buf);
+
+      int whisper_target = check_socket_by_username(nick_buf);
+      printf("\t\twhisper_target: %d\n", whisper_target);
+
+      if(whisper_target>-1){
+        int idx = get_User_list_index_by_socket(whisper_target);
+        printf("[+]User found at [%d]: %s\n", idx, User_list[idx].user_name);
+        return send_whisper_message(connfd, whisper_target, mesg_buf);
+      } else {
+        // char tempMessage[MAX_MSG_CHAR + 100] ="[-]Command not recognized\n";//this part is fine
+        char tempMessage[MAX_MSG_CHAR + 100];
+        bzero(tempMessage, sizeof(tempMessage));
+        if (strlen(mesg_buf) > 0) {
+          strcpy(tempMessage, (char *)"User ");
+          strcat(tempMessage, nick_buf); 
+          strcat(tempMessage, (char *)" not found.\n");
+        } else {
+          strcpy(tempMessage, (char *)"[-]Command ");
+          strcat(tempMessage, message); 
+          strcat(tempMessage, (char *)" not recognized.\n");
+        }
+        printf("%s\n ", tempMessage);
+        return send_message(connfd, tempMessage);
+      }
     }
     return send_ROOM_message(connfd);
   } 
@@ -1119,6 +1191,10 @@ void simple_message(int connfd){
     print_Room(room_id);
 
     n = process_message(connfd, message);
+    if(n == 99) {
+      close(connfd);
+      break;
+    }
     bzero(message, sizeof(message));  // reintialize the message[] buffer
   }
 }
