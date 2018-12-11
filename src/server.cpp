@@ -28,30 +28,44 @@ using namespace std;
 /**********************
   Structs
 ***********************/
-#define MAX_USER_NAME 30
+#define MAX_CLIENTS 100
+#define MAX_ROOM_NUM 20
+#define MAX_USER_IN_A_ROOM 20
+
+#define MAX_USER_NAME 15
 #define MAX_ROOM_NAME 30
 #define MAX_MSG_CHAR 100
 
-#define MAX_ROOM_NUM 20
-#define MAX_USER_IN_A_ROOM 20
-#define MAX_CLIENTS 100
-
 #define BUF_MAX_20LINES 20
-#define BUF_MAX_80CHARS 80
+#define BUF_MAX_100CHARS 100
 #define BUF_SMALL_300 300
 
 #define DEFAULT_USR_NAME "ChangeName"
 
 typedef struct User{
+  // User's nickname
   char user_name[MAX_USER_NAME];
+  // User's socket
   int socket;
+  // User's current location
   int room_id;
 } User;
 typedef struct Room{
+  // Room name
   char room_name[MAX_ROOM_NAME];
+  // room_id is matched with corresponding index of Room_list[],
+  // e.g., Room number 0 has room_id of 0 and it is at Room_list[0]
   int room_id;
+  // keep track a number of current clients in a specific Room
   int num_users;
+  // Client list in a specific Room
   int socket_list_in_Room[MAX_USER_IN_A_ROOM];
+  // Circular buffer which records all messages from clients in a specific Room
+  char chat_buffer[BUF_MAX_20LINES][BUF_MAX_100CHARS];
+  // HEAD pointer of chat_buffer
+  int chat_buffer_HEAD;
+  // TAIL pointer of chat_buffer
+  int chat_buffer_TAIL;
 } Room;
 typedef struct Message{
   char message[MAX_MSG_CHAR];
@@ -92,11 +106,18 @@ pthread_mutex_t lock;
 pthread_mutex_t room;
 
 // We will use this as a simple circular buffer of incoming messages.
-char message_buf[BUF_MAX_20LINES][BUF_MAX_80CHARS];
+char message_buf[BUF_MAX_20LINES][BUF_MAX_100CHARS];
+char entire_message_buf[BUF_MAX_20LINES * BUF_MAX_100CHARS];
 
 // This is an index into the message buffer.
 int msgi = 0;
 
+
+// Initialize the message buffer to empty strings.
+void init_entire_message_buf() {
+  bzero(entire_message_buf, sizeof(entire_message_buf));
+}
+int init_chat_buffer_in_Room(int room_id);
 void init_Rooms_Users_Messages(){ 
   User initUser;
   initUser.user_name[0] = '\0';
@@ -112,9 +133,14 @@ void init_Rooms_Users_Messages(){
   for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
     initRoom.socket_list_in_Room[i] = -1;
   }
-  // initRoom.socket_list_in_Room[0] = -1;
+  for(int i=0; i<BUF_MAX_20LINES; i++){
+    bzero(initRoom.chat_buffer[i], BUF_MAX_100CHARS);
+  }
+  initRoom.chat_buffer_HEAD = 0;
+  initRoom.chat_buffer_TAIL = 0;
   for(int i=0; i<MAX_ROOM_NUM; i++){
     Room_list[i] = initRoom;
+    init_chat_buffer_in_Room(i);
   }
 }
 void print_Room(int r_id){
@@ -143,6 +169,156 @@ void print_Room_socket_list(int r_id){
 
 
 
+
+
+
+// Intended Space - Don't erase empty lines
+
+
+
+
+
+
+
+
+/********************************
+  CHAT_BUFFER (Circular Buffer)
+********************************/
+int add_title_into_chat_buffer(int room_id, int head){
+  // chat_buffer[] will always have the title message which displays Room name and number at the HEAD
+  // e.g., "---------- Room[11]: Bohemians ----------"
+  // ***NOTE*** this buffer does not increase HEAD. Caller function should increase HEAD manually.
+  char title[BUF_SMALL_300] = "---------- Room[";
+  char buf[5]="";
+  bzero(buf, sizeof(buf));
+  sprintf(buf, "%d", room_id);
+  strcat(title, buf);
+  strcat(title, (char *)"]: ");
+  strcat(title, Room_list[room_id].room_name);
+  strcat(title, (char *)" ----------");
+  
+  strcpy(Room_list[room_id].chat_buffer[head], title);
+}
+int init_chat_buffer_in_Room(int room_id){
+  /** initialize Chat_Buffer in a Room by writing zeros **/
+  for(int i=0; i<BUF_MAX_20LINES; i++){
+    bzero(Room_list[room_id].chat_buffer[i], BUF_MAX_100CHARS);
+  }
+  add_title_into_chat_buffer(room_id, 0); 
+  Room_list[room_id].chat_buffer_HEAD = 0;
+  Room_list[room_id].chat_buffer_TAIL = 0;
+}
+int get_User_list_index_by_socket(int connfd);
+int add_message_into_chat_buffer(int connfd, int room_id, char *message){
+  /**
+    TAIL++
+    if TAIL > max_index
+      TAIL = 0
+    if TAIL <= HEAD
+      HEAD++
+      if HEAD > max_index
+        HEAD =0
+      HEAD <- title msg
+    buf[TAIL] = msg
+  **/
+
+  int tail = Room_list[room_id].chat_buffer_TAIL;
+  int head = Room_list[room_id].chat_buffer_HEAD;
+  message[BUF_MAX_100CHARS - MAX_USER_NAME - 3]='\0';
+
+  printf("\t\t\t\t\t\t[head:%d tail:%d]\n", head, tail);
+  if(head == tail){
+    add_title_into_chat_buffer(room_id, head);
+  }
+  char prefix[BUF_MAX_100CHARS];
+  bzero(prefix, sizeof(prefix));
+  int user_idx = get_User_list_index_by_socket(connfd);
+  strncpy(prefix, User_list[user_idx].user_name, MAX_USER_NAME);
+  strcat(prefix, (char *)": ");
+
+  tail++;
+  if (tail >= BUF_MAX_20LINES){
+    tail = 0;
+  }
+  if (tail <= head){
+    head++;
+    if (head >= BUF_MAX_20LINES){
+      head = 0;
+    }
+    // strcpy(Room_list[room_id].chat_buffer[head], title);
+    add_title_into_chat_buffer(room_id, head);
+    Room_list[room_id].chat_buffer_HEAD = head;
+  }
+  strcat(prefix, message);
+  printf("\tprefix: %s\n", prefix);
+  strncpy(Room_list[room_id].chat_buffer[tail], prefix, BUF_MAX_100CHARS-1);
+  Room_list[room_id].chat_buffer_TAIL = tail;
+}
+void get_chat_buffer(int room_id){
+  printf("\tget_chat_buffer() begin\n");
+  char entire_message[BUF_MAX_20LINES * BUF_MAX_100CHARS];
+  bzero(entire_message, sizeof(entire_message));
+
+  int tail = Room_list[room_id].chat_buffer_TAIL;
+  int head = Room_list[room_id].chat_buffer_HEAD;
+  
+  if(tail>head){
+    for(int i=head; i<tail; i++){
+      strcat(entire_message, Room_list[room_id].chat_buffer[i]);
+    }
+  }
+  else{
+    for(int i=head; i<BUF_MAX_20LINES; i++){
+      strcat(entire_message, Room_list[room_id].chat_buffer[i]);
+    }
+    for(int i=0; i<=tail; i++){
+      strcat(entire_message, Room_list[room_id].chat_buffer[i]);
+    }
+  }
+  printf("\tentire_message:\n\t%s\n", entire_message);
+  printf("\tget_chat_buffer() finish\n");
+  // return entire_message;
+}
+void print_chat_buffer(int room_id){
+  for(int i=0; i<BUF_MAX_20LINES; i++){
+    printf("%3d: %s\n", i, Room_list[room_id].chat_buffer[i]);
+  }
+}
+int create_entire_message_from_chat_buffer(int room_id){
+  printf("\tcreate_entire_message_from_chat_buffer() begin\n");
+  printf("\tbefore init: %s\n", entire_message_buf);
+  init_entire_message_buf();
+  printf("\t after init: %s\n", entire_message_buf);
+  int tail = Room_list[room_id].chat_buffer_TAIL;
+  int head = Room_list[room_id].chat_buffer_HEAD;
+  printf("\t head: %d  tail: %d\n", head, tail);
+  
+  if(head==tail){
+    strcat(entire_message_buf, Room_list[room_id].chat_buffer[head]);
+    return 1;
+  }
+  if(tail>head){
+    for(int i=head; i<=tail; i++){
+      printf("\t\tputting msg[%d]: %s\n", i, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, (char *)"\n");
+    }
+  }
+  else{
+    for(int i=head; i<BUF_MAX_20LINES; i++){
+      printf("\t\tputting msg[%d]: %s\n", i, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, (char *)"\n");
+    }
+    for(int i=0; i<=tail; i++){
+      printf("\t\tputting msg[%d]: %s\n", i, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, Room_list[room_id].chat_buffer[i]);
+      strcat(entire_message_buf, (char *)"\n");
+    }
+  }
+  printf("\tcreate_entire_message_from_chat_buffer() finish\n");
+  return 1;
+}
 
 
 
@@ -401,6 +577,7 @@ int create_new_Room(char *room_name){
   // newRoom.socket_list_in_Room[0] = connfd;  // add socket(client) into socket_list_in_Room at 0 because it is just created.
   // Room_list[x] = newRoom; // put this Room into Room_list[], index number and room_id is always matched
   increase_number_of_room_list();  // increate number_of_roomlist
+  add_title_into_chat_buffer(empty_room_idx, 0);
   pthread_mutex_unlock(&room);
   return empty_room_idx;
 }
@@ -467,6 +644,7 @@ int remove_Room_from_list(int room_id){
     Room_list[room_id].num_users = 0;
     Room_list[room_id].room_name[0] = '\0';
     Room_list[room_id].socket_list_in_Room[0] = -1;
+    init_chat_buffer_in_Room(room_id);
     decrease_number_of_room_list();
   }  
 }
@@ -562,38 +740,6 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     add_User_in_Room(user_idx, room_id);
   }
   return 1;
-
-  // if( room_id < 0){  // if there is existing room with same name
-  //   if (get_number_of_room_list() >= MAX_ROOM_NUM) { 
-  //     printf("\tMax number of Rooms reached!\n");
-  //     return -1;
-  //   }
-  //   room_id = create_new_Room(room_name);
-  //   printf("   created room_id: %d\n", room_id);
-  // }
-  // int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);
-  // if (empty_socket_idx < 0){
-  //   printf("\tNo more Users in the Room!\n");
-  //   return -1;
-  // }
-  // // check if this client(socket) is an existing user
-  // int user_idx = get_User_list_index_by_socket(connfd);
-  // if( user_idx < 0) { // return value: index at User_list[], -1:not existing
-  //   printf("\tNon-Existing User!\n");
-  //   user_idx = find_empty_spot_in_User_list(); // find an empty slot to create new User
-  //   create_new_User_at(user_idx, connfd, nickname, room_id);  // create a new User at index
-  // } else {  // if the user is existing
-  //   printf("\tExisting User!\n");
-  //   int old_room_id = User_list[user_idx].room_id;
-  //   int socket_idx = find_User_socket_idx_from_Room(connfd, old_room_id);
-  //   leave_room(user_idx, old_room_id, socket_idx); // leave the current Room
-  //   change_nickname(user_idx, nickname);
-  // }
-  // add_User_in_Room(user_idx, room_id, empty_socket_idx);  // add the user into the existing room
-
-       // if number of room is full //leave the old room.
-  // }
-  // return 1;
 }
 
 
@@ -630,6 +776,9 @@ int receive_message(int connfd, char *message) {
 }
 // A wrapper around send to simplify calls.
 int send_message(int connfd, char *message) {
+  printf("\tsend_message() begin\n");
+  printf("\tmessage size: %d\n", strlen(message));
+  printf("\tmessage: %s\n", message);
   return send(connfd, message, strlen(message), 0);
 }
 // This function adds a message that was received to the message buffer.
@@ -733,7 +882,7 @@ int send_roomlist_message(int connfd){
 }
 /* Command: \WHO */
 int send_userlist_message(int connfd) { 
-  char message[BUF_MAX_20LINES * BUF_MAX_80CHARS] = "";
+  char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
   int tempRoom_ID = -1;
   for(int i=0;i<MAX_CLIENTS;i++){
     int tempSocket = User_list[i].socket;
@@ -830,8 +979,13 @@ int send_where_message(int connfd, char *message){
 
 int send_helplist_message(int connfd) { // this part do not need help list.
 
+<<<<<<< HEAD
   char message[BUF_MAX_20LINES * BUF_MAX_80CHARS] = "";
   const char *temp_user_list[7];
+=======
+  char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
+  const char *temp_user_list[6];
+>>>>>>> master
     temp_user_list[0] = "\\JOIN nickname room";
     temp_user_list[1] = "\\ROOMS";
     temp_user_list[2] = "\\LEAVE";
@@ -854,7 +1008,24 @@ int send_helplist_message(int connfd) { // this part do not need help list.
 
   return send_message(connfd, message);
 }
-
+int send_chat_message(int connfd, char *message){
+  printf("\t\t\t\t\tstrlen(message):%d\n", strlen(message));
+  message[BUF_MAX_100CHARS-1]='\0';
+  printf("\tgot message from client[%d]: %s\n", connfd, message);
+  int user_idx = get_User_list_index_by_socket(connfd);
+  int room_id = User_list[user_idx].room_id;
+  printf("\t\t\tmessage length: %d\n", strlen(message));
+  if(strlen(message) > 0 && strcmp(message, "\n") != 0) {
+    printf("before add_message()\n");
+    add_message_into_chat_buffer(connfd, room_id, message);
+    printf("after add_message()\n");
+    print_chat_buffer(room_id);
+  }
+  create_entire_message_from_chat_buffer(room_id);
+  printf("\tentire_message_buf: %s\n", entire_message_buf);
+  return send_message(connfd, entire_message_buf);
+  // return send_message(connfd, get_chat_buffer(room_id));
+}
 
 int process_message(int connfd, char *message) {//idk if we can use case switch
   
@@ -918,8 +1089,10 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     return send_ROOM_message(connfd);
   } 
   else {//this part is fine
-    printf("Server responding with echo response.\n");
-    return send_message(connfd, message);
+    printf("Server sending chat messages to clients.\n");
+    return send_chat_message(connfd, message);
+    // printf("Server responding with echo response.\n");
+    // return send_message(connfd, message);
   }
 }
 
