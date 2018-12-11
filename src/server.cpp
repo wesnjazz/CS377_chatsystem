@@ -1026,11 +1026,21 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       printf("\tNickname: %s\n", token_array[1]);
       // we can safely call JOIN_Nickname_Room() without any considerations here.
       // the function will deal with any cases.
-      if(JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]) == -1){
-        return send_message(connfd, (char *)"[-]Error creating a room");
+      char r_buf[MAX_ROOM_NAME + 30];
+      bzero(r_buf, sizeof(r_buf));
+      int join = JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]);
+      if(join <= -1){
+        strcpy(r_buf, (char *)"[-]Error creating a room ");
+        strcat(r_buf, token_array[2]);
+        return send_message(connfd, r_buf);
       }
-
-      return send_message(connfd, (char *)"[+]Created a room");
+      if(strcmp(token_array[2], (char *)"Lobby") == 0) {
+        strcpy(r_buf, (char *)"[+]Entering ");
+      } else {
+        strcpy(r_buf, (char *)"[+]Created a Room ");
+      }
+      strcat(r_buf, token_array[2]);
+      return send_message(connfd, r_buf);
     }
     else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
             printf("%s\n","\\ROOMS" );
