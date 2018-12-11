@@ -922,6 +922,51 @@ int send_userlist_message(int connfd) {
   return send_message(connfd, message);
 }
 /* Command : \WHERE */
+// int send_where_message(int connfd, char *message){
+// //this should be two jobs: 
+// // 1) "\WHERE" which tells where I am
+// // 2) "\WHERE nickname" which tells where he is. 
+// // a) if a user send "\WHERE name" which that name is his name, then it is same as "\WHERE" and don't need to search himself again
+// //
+// //  if command is not a valid command, then return error
+// //  if 2nd argument is same as his name, then simply call 
+//  // message = (char *)("%s "," Your location room is ");
+  
+//   char buffer[BUF_SMALL_300] = "";
+//   string_to_token(message);
+//   int user_index = -1;
+
+//   if (!token_array[1]){ // if there is no second argument, e.g., \WHERE
+//     printf("checking myself\n");
+//     user_index = get_User_list_index_by_socket(connfd);
+//   } else {  // there is 2nd argument(user name). e.g., \WHERE user_name
+//     printf("check_socket_by_username()\n");
+//     user_index = get_User_list_index_by_socket(check_socket_by_username(token_array[1]));
+//   }
+
+//   bzero(buffer, sizeof(buffer));
+//   printf("user_index:%d\n", user_index);
+//   strcat(buffer, "User ");
+//   if (user_index == -1) {
+//     if(token_array[1]) strcat(buffer, token_array[1]);
+//     strcat(buffer, " does not exist.");
+//     printf("[%s]\n", buffer);
+//   } else {
+//     strcat(buffer, User_list[user_index].user_name);
+//     strcat(buffer, " is at Room[");
+//     strcat(buffer, (char *)User_list[user_index].room_id);
+//     strcat(buffer, "]: ");
+//     strcat(buffer, Room_list[User_list[user_index].room_id].room_name);
+//   }
+//   return send_message(connfd, buffer);
+//   // // char* nickname = (char*)check_username_by_socket(connfd);  // we should know socket number by username rather than to know username by socket becuase the argument is username and nobody knows other's socket number
+//   // // printf("the nickname is %s",nickname);
+//   // // int r_id = check_user_in_which_room(nickname);
+//   // // char *temp_room_name = Room_list[r_id].room_name;
+//   // // printf("the room_id is %d\troom name:%s",r_id, temp_room_name);
+//   // // strcat(message,temp_room_name);
+// }
+
 int send_where_message(int connfd, char *message){
 //this should be two jobs: 
 // 1) "\WHERE" which tells where I am
@@ -945,17 +990,30 @@ int send_where_message(int connfd, char *message){
   }
 
   bzero(buffer, sizeof(buffer));
-  printf("user_index:%d\n", user_index);
+
+  
   strcat(buffer, "User ");
+  
   if (user_index == -1) {
+    
     if(token_array[1]) strcat(buffer, token_array[1]);
     strcat(buffer, " does not exist.");
-    printf("[%s]\n", buffer);
+    
   } else {
+    
     strcat(buffer, User_list[user_index].user_name);
+    
     strcat(buffer, " is at Room[");
-    strcat(buffer, (char *)User_list[user_index].room_id);
+    
+    
+     char temp_room_id[20];
+     sprintf(temp_room_id, "%d", User_list[user_index].room_id);
+   
+    
+    strcat(buffer, temp_room_id);
+    
     strcat(buffer, "]: ");
+    
     strcat(buffer, Room_list[User_list[user_index].room_id].room_name);
   }
   return send_message(connfd, buffer);
@@ -966,17 +1024,21 @@ int send_where_message(int connfd, char *message){
   // // printf("the room_id is %d\troom name:%s",r_id, temp_room_name);
   // // strcat(message,temp_room_name);
 }
+int send_helplist_message(int connfd) { // this part do not need help list.】
 
-int send_helplist_message(int connfd) { // this part do not need help list.
   char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
-  const char *temp_user_list[6];
-    temp_user_list[0] = "\\JOIN nickname room";
-    temp_user_list[1] = "\\ROOMS";
-    temp_user_list[2] = "\\LEAVE";
-    temp_user_list[3] = "\\WHO";
-    temp_user_list[4] = "\\nickname message";
-    temp_user_list[5] = "\\HELP";
-  for (int i = 0; i < 6; i++) {
+  const char *temp_user_list[8];
+
+    temp_user_list[0] = "\\JOIN nickname room, join other room with name you want ";
+    temp_user_list[1] = "\\ROOMS,list the room names  of server has right now";
+    temp_user_list[2] = "\\LEAVE, leave server, close connection";
+    temp_user_list[3] = "\\WHO, show your name in this room";
+    temp_user_list[4] = "\\nickname message, whisper message to nickname you want";
+    temp_user_list[5] = "\\HELP, show list of command";
+    temp_user_list[6] = "\\WHERE, show where you at which room";
+    temp_user_list[7] = "\\WHERE nickname, show the room name of this user located";
+    temp_user_list[8] = "\\WHISPER nickname, whisper to a user that only both of you can see the message";
+  for (int i = 0; i < 8; i++) {
     if (strcmp(temp_user_list[i], "") == 0) break;//room list
     strcat(message, temp_user_list[i]);//room list
     strcat(message, "\n");
@@ -990,6 +1052,7 @@ int send_helplist_message(int connfd) { // this part do not need help list.
 
   return send_message(connfd, message);
 }
+
 int send_whisper_message(int connfd, int whisper_target, char *message){
   int user_idx = get_User_list_index_by_socket(connfd);
   char whisper_msg[BUF_SMALL_300];
