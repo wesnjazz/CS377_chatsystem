@@ -651,9 +651,9 @@ void upper_case(char *s) {
 }
 char *token_array[3];// for string to token
 void string_to_token(char buf[]){
-  token_array[0] = '\0';
-  token_array[1] = '\0';
-  token_array[2] = '\0';
+  // token_array[0] = '\0';
+  // token_array[1] = '\0';
+  // token_array[2] = '\0';
   int i = 0;
     char *p = strtok (buf, " ");
     while (p != NULL)
@@ -793,17 +793,30 @@ int send_where_message(int connfd, char *message){
   }
 
   bzero(buffer, sizeof(buffer));
-  printf("user_index:%d\n", user_index);
+
+  
   strcat(buffer, "User ");
+  
   if (user_index == -1) {
+    
     if(token_array[1]) strcat(buffer, token_array[1]);
     strcat(buffer, " does not exist.");
-    printf("[%s]\n", buffer);
+    
   } else {
+    
     strcat(buffer, User_list[user_index].user_name);
+    
     strcat(buffer, " is at Room[");
-    strcat(buffer, (char *)User_list[user_index].room_id);
+    
+    
+     char temp_room_id[20];
+     sprintf(temp_room_id, "%d", User_list[user_index].room_id);
+   
+    
+    strcat(buffer, temp_room_id);
+    
     strcat(buffer, "]: ");
+    
     strcat(buffer, Room_list[User_list[user_index].room_id].room_name);
   }
   return send_message(connfd, buffer);
@@ -818,13 +831,15 @@ int send_where_message(int connfd, char *message){
 int send_helplist_message(int connfd) { // this part do not need help list.
 
   char message[BUF_MAX_20LINES * BUF_MAX_80CHARS] = "";
-  const char *temp_user_list[6];
+  const char *temp_user_list[7];
     temp_user_list[0] = "\\JOIN nickname room";
     temp_user_list[1] = "\\ROOMS";
     temp_user_list[2] = "\\LEAVE";
     temp_user_list[3] = "\\WHO";
     temp_user_list[4] = "\\nickname message";
     temp_user_list[5] = "\\HELP";
+    temp_user_list[6] = "\\WHERE";
+    temp_user_list[7] = "\\WHERE nickname";
   for (int i = 0; i < 6; i++) {
     if (strcmp(temp_user_list[i], "") == 0) break;//room list
     strcat(message, temp_user_list[i]);//room list
@@ -882,6 +897,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       return send_where_message(connfd, message);
 
     }
+
     else if(strcmp(message, "\\WHO") == 0){//this part is fine
           printf("%s\n","\\WHO" );
           return send_userlist_message(connfd);
