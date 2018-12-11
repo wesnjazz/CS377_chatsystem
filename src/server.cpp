@@ -983,17 +983,18 @@ int send_where_message(int connfd, char *message){
 int send_helplist_message(int connfd) { // this part do not need help list.】
 
   char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
-  const char *temp_user_list[6];
+  const char *temp_user_list[8];
 
-    temp_user_list[0] = "\\JOIN nickname room";
-    temp_user_list[1] = "\\ROOMS";
-    temp_user_list[2] = "\\LEAVE";
-    temp_user_list[3] = "\\WHO";
-    temp_user_list[4] = "\\nickname message";
-    temp_user_list[5] = "\\HELP";
-    temp_user_list[6] = "\\WHERE";
-  // temp_user_list[7] = "\\WHERE nickname";
-  for (int i = 0; i < 6; i++) {
+    temp_user_list[0] = "\\JOIN nickname room, join other room with name you want ";
+    temp_user_list[1] = "\\ROOMS,list the room names  of server has right now";
+    temp_user_list[2] = "\\LEAVE, leave server, close connection";
+    temp_user_list[3] = "\\WHO, show your name in this room";
+    temp_user_list[4] = "\\nickname message, whisper message to nickname you want";
+    temp_user_list[5] = "\\HELP, show list of command";
+    temp_user_list[6] = "\\WHERE, show where you at which room";
+    temp_user_list[7] = "\\WHERE nickname, show the room name of this user located";
+    temp_user_list[8] = "\\WHISPER nickname, whisper to a user that only both of you can see the message";
+  for (int i = 0; i < 8; i++) {
     if (strcmp(temp_user_list[i], "") == 0) break;//room list
     strcat(message, temp_user_list[i]);//room list
     strcat(message, "\n");
@@ -1093,6 +1094,8 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
 
     else if(strcmp(message, "\\WHO") == 0){//this part is fine
           printf("%s\n","\\WHO" );
+          string_to_token(message);
+
           return send_userlist_message(connfd);
     }
     else if(strcmp(message, "\\HELP") == 0){//this part is fine
