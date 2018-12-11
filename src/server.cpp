@@ -1026,21 +1026,21 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       printf("\tNickname: %s\n", token_array[1]);
       // we can safely call JOIN_Nickname_Room() without any considerations here.
       // the function will deal with any cases.
-      char r_buf[MAX_ROOM_NAME + 30];
-      bzero(r_buf, sizeof(r_buf));
+      char msg_buf[MAX_ROOM_NAME + 30];
+      bzero(msg_buf, sizeof(msg_buf));
       int join = JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]);
       if(join <= -1){
-        strcpy(r_buf, (char *)"[-]Error creating a room ");
-        strcat(r_buf, token_array[2]);
-        return send_message(connfd, r_buf);
+        strcpy(msg_buf, (char *)"[-]Error creating a room ");
+        strcat(msg_buf, token_array[2]);
+        return send_message(connfd, msg_buf);
       }
       if(strcmp(token_array[2], (char *)"Lobby") == 0) {
-        strcpy(r_buf, (char *)"[+]Entering ");
+        strcpy(msg_buf, (char *)"[+]Entering ");
       } else {
-        strcpy(r_buf, (char *)"[+]Created a Room ");
+        strcpy(msg_buf, (char *)"[+]Created a Room ");
       }
-      strcat(r_buf, token_array[2]);
-      return send_message(connfd, r_buf);
+      strcat(msg_buf, token_array[2]);
+      return send_message(connfd, msg_buf);
     }
     else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
             printf("%s\n","\\ROOMS" );
@@ -1049,9 +1049,11 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
             return send_roomlist_message(connfd);
     }
     else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
-      char message[1024] = "GoodBye";
-      return send_message(connfd, message);
-
+      char msg_buf[20] = "GoodBye";
+      send_message(connfd, msg_buf);
+      // close(connfd);
+      return 99;
+      // return send_message(connfd, message);
     }
     else if(strncmp(message, "\\WHERE", 5) == 0){
       printf("%s\n","\\WHERE" );
@@ -1108,6 +1110,10 @@ void simple_message(int connfd){
     print_Room(room_id);
 
     n = process_message(connfd, message);
+    if(n == 99) {
+      close(connfd);
+      break;
+    }
     bzero(message, sizeof(message));  // reintialize the message[] buffer
   }
 }
