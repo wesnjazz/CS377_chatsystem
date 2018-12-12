@@ -18,4 +18,46 @@
 \JOIN Jordan HallOfFame
 \JOIN Jordan NBA
 \JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
+\JOIN Jordan NBA
+\JOIN Jordan HallOfFame
 \ROOMS
+\WHO
+

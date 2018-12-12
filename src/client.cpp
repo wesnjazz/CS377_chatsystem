@@ -74,11 +74,12 @@ void Client::scripting(char* fileName){
   		// char* inst=(*(info+i)).c_str();
   		char buffer[BUF_SIZE];
   		strcpy(buffer,(*(info+i)).c_str());
-  		if(buffer[0]!='\n') buffer[strlen(buffer)-1] = '\0';
+  		if(buffer[0]!='\n') buffer[strlen(buffer)] = '\0';
 
   		printf("\n%s: %s\n", getName(),buffer);
       	sendMessage(buffer);
-      	sleep(2);
+      	usleep((unsigned int)100000);
+      	// sleep(2);
       	// sendMessage("\\ROOMS");
 
   	}

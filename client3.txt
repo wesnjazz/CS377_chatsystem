@@ -18,4 +18,46 @@
 \JOIN Kobe HallOfFame
 \JOIN Kobe NBA
 \JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
+\JOIN Kobe NBA
+\JOIN Kobe HallOfFame
 \ROOMS
+\WHO
+
