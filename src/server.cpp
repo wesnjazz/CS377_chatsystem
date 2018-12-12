@@ -535,6 +535,7 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   char old_room_name[MAX_ROOM_NAME] = "";
   strcpy(old_room_name, Room_list[User_list[user_idx].room_id].room_name);
 
+  // Check if ths User profile has been created
   if(user_idx < 0){
     user_idx = find_empty_spot_in_User_list();
     int is_same_name = check_is_this_name_existing(nickname);
@@ -543,7 +544,7 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
       return -1;
     }
     create_new_User_at(user_idx, connfd, nickname, room_id);  // create a new User at index
-    add_User_in_Room(user_idx, room_id);
+    add_User_in_Room(user_idx, room_id); // get into the Lobby as the first location
     return 1;
   }
   // 1. Check if trying to using same name
@@ -555,7 +556,7 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     }
     printf("\tchanging nickname from %s to %s\n", User_list[user_idx].user_name, nickname);
     int ch = change_nickname(user_idx, nickname);  // change nickname
-    if (ch) send_message(connfd, (char *)"SERVER[1]: Your nickname has been changed.");
+    // if (ch) send_message(connfd, (char *)"SERVER[1]: Your nickname has been changed.");
   }
   // 2. Check if the Room is not existing
   if(room_id < 0){
@@ -1027,12 +1028,15 @@ void chat_system(int connfd){
   while((n=receive_message(connfd, message))>0) {
     printf("From socket[%d]: Server received a meesage of %d bytes: %s\n", connfd, (int)n, message);
 
+    int user_idx = get_User_list_index_by_socket(connfd);
+    print_User(user_idx);
     n = process_message(connfd, message);
 
     if(n == 99) {
       remove_User_from_belonging_Room(connfd);
       remove_User_from_list(connfd);
-      close(connfd);
+      // close(connfd);
+      delete_socket(connfd);
       break;
     }
     bzero(message, sizeof(message));  // reintialize the message[] buffer
