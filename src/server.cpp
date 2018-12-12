@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include <time.h>
 #include <iostream>
 using namespace std;
 
@@ -1227,6 +1227,58 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           printf("%s\n","it is \\HELP" );
           return send_helplist_message(connfd);
     }
+    else if(strncmp(message,"\\CHANGENAME", 10)==0){
+          printf("%s\n","it is \\ChangeName" );
+          
+          string_to_token(message);
+          if(!token_array[1]){
+            printf("\n 1 arguments");
+            return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
+          
+          }
+          else{
+          printf("\n 2 arguments");
+          int idx = get_User_list_index_by_socket(connfd);
+          int room_id=User_list[idx].room_id;
+          char * room_name;
+          room_name =(char*) Room_list[room_id].room_name;
+          
+          printf(" user idx is %d\n", idx);
+          printf(" user room id is %d\n", room_id);
+          printf(" user name is %s\n", token_array[1]);
+          printf(" user room name is %s\n", room_name);
+          JOIN_Nickname_Room(connfd,token_array[1],room_name);
+          }
+        }
+
+    else if(strcmp(message, "\\TIME") == 0){//this part is fine
+          time_t rawtime;
+          struct tm * timeinfo;
+
+          time ( &rawtime );
+          timeinfo = localtime ( &rawtime );
+          printf ( "Current local time and date: %s", asctime (timeinfo) );
+          char msg_buf[20] = "" ;
+          strcat(msg_buf, (char *)"Current local time and date:");
+          strcat(msg_buf,asctime (timeinfo));
+          send_message(connfd, msg_buf);
+    }
+    else if(strncmp(message, "\\KICK",4) == 0){//this part is fine
+          string_to_token(message);
+          if(!token_array[1]){
+            printf("\n 1 arguments");
+            return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
+          
+          }
+          else{
+          int tempSocket = check_socket_by_username(token_array[1]);
+          printf(" user socket is %d\n", tempSocket);
+          char * message = "\\LEAVE";
+          process_message(tempSocket, message);
+        }
+    }
+
+
     // else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
     // }
