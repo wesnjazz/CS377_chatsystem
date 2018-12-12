@@ -523,30 +523,17 @@ int remove_User_from_list(int connfd){
   User_list[user_idx].room_id = -1;
   decrease_number_of_user_list();
 }
+int find_User_socket_idx_from_Room(int connfd, int old_room_id);
+int remove_Room_from_list(int room_id);
 int remove_User_from_belonging_Room(int connfd){
   int user_idx = get_User_list_index_by_socket(connfd);
   int room_id = User_list[user_idx].room_id;
-  int sock_idx = find_User_socket_idx_from_Room()
-
-
-typedef struct Room{
-  // Room name
-  char room_name[MAX_ROOM_NAME];
-  // room_id is matched with corresponding index of Room_list[],
-  // e.g., Room number 0 has room_id of 0 and it is at Room_list[0]
-  int room_id;
-  // keep track a number of current clients in a specific Room
-  int num_users;
-  // Client list in a specific Room
-  int socket_list_in_Room[MAX_USER_IN_A_ROOM];
-  // Circular buffer which records all messages from clients in a specific Room
-  char chat_buffer[BUF_MAX_20LINES][BUF_MAX_100CHARS];
-  // HEAD pointer of chat_buffer
-  int chat_buffer_HEAD;
-  // TAIL pointer of chat_buffer
-  int chat_buffer_TAIL;
-} Room;
-
+  int sock_idx = find_User_socket_idx_from_Room(connfd, room_id);
+  Room_list[room_id].socket_list_in_Room[sock_idx] = -1;
+  Room_list[room_id].num_users--;
+  if(Room_list[room_id].num_users <= 0){
+    remove_Room_from_list(room_id);
+  }
 }
 
 
@@ -692,7 +679,9 @@ int remove_Room_from_list(int room_id){
     Room_list[room_id].room_id = -1;
     Room_list[room_id].num_users = 0;
     Room_list[room_id].room_name[0] = '\0';
-    Room_list[room_id].socket_list_in_Room[0] = -1;
+    for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
+      Room_list[room_id].socket_list_in_Room[i] = -1;
+    }
     init_chat_buffer_in_Room(room_id);
     decrease_number_of_room_list();
   }  
@@ -1331,6 +1320,7 @@ void chat_system(int connfd){
 
     n = process_message(connfd, message);
     if(n == 99) {
+      remove_User_from_belonging_Room(connfd);
       remove_User_from_list(connfd);
       close(connfd);
       break;
