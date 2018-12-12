@@ -10,109 +10,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <iostream>
-using namespace std;
-
-
-
-
-
-
-// Intended Space - Don't erase empty lines
-
-
-
-
-
-
-
-/**********************
-  Structs
-***********************/
-#define MAX_CLIENTS 100
-#define MAX_ROOM_NUM 20
-#define MAX_USER_IN_A_ROOM 20
-
-#define MAX_USER_NAME 15
-#define MAX_ROOM_NAME 30
-#define MAX_MSG_CHAR 100
-
-#define BUF_MAX_20LINES 35
-#define BUF_MAX_100CHARS 100
-#define BUF_SMALL_300 300
-
-#define DEFAULT_USR_NAME "ChangeName"
-
-typedef struct User{
-  // User's nickname
-  char user_name[MAX_USER_NAME];
-  // User's socket
-  int socket;
-  // User's current location
-  int room_id;
-} User;
-typedef struct Room{
-  // Room name
-  char room_name[MAX_ROOM_NAME];
-  // room_id is matched with corresponding index of Room_list[],
-  // e.g., Room number 0 has room_id of 0 and it is at Room_list[0]
-  int room_id;
-  // keep track a number of current clients in a specific Room
-  int num_users;
-  // Client list in a specific Room
-  int socket_list_in_Room[MAX_USER_IN_A_ROOM];
-  // Circular buffer which records all messages from clients in a specific Room
-  char chat_buffer[BUF_MAX_20LINES][BUF_MAX_100CHARS];
-  // HEAD pointer of chat_buffer
-  int chat_buffer_HEAD;
-  // TAIL pointer of chat_buffer
-  int chat_buffer_TAIL;
-} Room;
-typedef struct Message{
-  char message[MAX_MSG_CHAR];
-  int socket;
-} Message;
-
-
-
-
-
-// Intended Space - Don't erase empty lines
-
-
-
-
-
-
-/*******************
-  GLOBAL VARIABLES 
-********************/
-/* Max text line length */
-#define MAXLINE 8192
-
-/* Second argument to listen() */
-#define LISTENQ 1024
-
-Room Room_list[MAX_ROOM_NUM];
-User User_list[MAX_CLIENTS];
-
-int num_room_list = 0;
-int num_user_list = 0;
-
-/* Simplifies calls to bind(), connect(), and accept() */
-typedef struct sockaddr SA;
-
-// A lock for the message buffer.
-pthread_mutex_t lock;
-pthread_mutex_t room;
-pthread_mutex_t user;
-
-// We will use this as a simple circular buffer of incoming messages.
-char message_buf[BUF_MAX_20LINES][BUF_MAX_100CHARS];
-char entire_message_buf[BUF_MAX_20LINES * BUF_MAX_100CHARS];
-
-// This is an index into the message buffer.
-int msgi = 0;
-
+#include "server.h"
 
 // Initialize the message buffer to empty strings.
 void init_entire_message_buf() {
@@ -120,7 +18,6 @@ void init_entire_message_buf() {
   bzero(entire_message_buf, sizeof(entire_message_buf));
   pthread_mutex_unlock(&lock);
 }
-int init_chat_buffer_in_Room(int room_id);
 void init_Rooms_Users_Messages(){ 
   User initUser;
   initUser.user_name[0] = '\0';
@@ -172,15 +69,7 @@ void print_Room_socket_list(int r_id){
 
 
 
-
-
-
 // Intended Space - Don't erase empty lines
-
-
-
-
-
 
 
 
@@ -213,7 +102,6 @@ int init_chat_buffer_in_Room(int room_id){
   Room_list[room_id].chat_buffer_TAIL = 0;
   pthread_mutex_unlock(&room);
 }
-int get_User_list_index_by_socket(int connfd);
 int add_message_into_chat_buffer(int connfd, int room_id, char *message){
   int tail = Room_list[room_id].chat_buffer_TAIL;
   int head = Room_list[room_id].chat_buffer_HEAD;
@@ -323,11 +211,6 @@ int create_entire_message_from_chat_buffer(int room_id){
 
 
 
-
-
-
-
-
 /********************************
   SOCKETS
 ********************************/
@@ -369,14 +252,7 @@ void delete_socket(int connfd){ // find a matching socket and delete it.
 
 
 
-
-
-
 // Intended Space - Don't erase empty lines
-
-
-
-
 
 
 
@@ -426,7 +302,6 @@ int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
   increase_number_of_user_list();
   return idx;
 }
-int find_empty_spot_socket_list_in_Room(int room_id);
 int add_User_in_Room(int user_idx, int room_id){
   /***
     purpose:  adding a User into existing Room
@@ -486,8 +361,6 @@ int remove_User_from_list(int connfd){
   pthread_mutex_unlock(&user);
   decrease_number_of_user_list();
 }
-int find_User_socket_idx_from_Room(int connfd, int old_room_id);
-int remove_Room_from_list(int room_id);
 int remove_User_from_belonging_Room(int connfd){
   int user_idx = get_User_list_index_by_socket(connfd);
   int room_id = User_list[user_idx].room_id;
@@ -503,17 +376,7 @@ int remove_User_from_belonging_Room(int connfd){
 
 
 
-
-
-
-
 // Intended Space - Don't erase empty lines
-
-
-
-
-
-
 
 
 
@@ -620,7 +483,6 @@ int leave_room(int user_idx, int old_room_id, int socket_idx){ // leave the curr
   }
   // print_Room_list();
 }
-int send_message(int connfd, char *message);
 int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create room if room is not existed, and add the user.
   /*** 
     purpose: process the command of "\JOIN nichname roomname"
@@ -642,13 +504,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   //                -4: [-]Max number of Rooms reached! No more Rooms can be created at this moment.
 
   int room_id = is_room_name_existing(room_name);
-  // find the index of User_list[] by socket
-  int user_idx = get_User_list_index_by_socket(connfd);
-
+  int user_idx = get_User_list_index_by_socket(connfd);   // find the index of User_list[] by socket
   bool created = false;
-
-  // printf("\texisting room_id: %d\n", room_id);
-  // printf("\texisting user_id: %d\n", user_idx);
 
   char old_room_name[MAX_ROOM_NAME] = "";
   strcpy(old_room_name, Room_list[User_list[user_idx].room_id].room_name);
@@ -686,13 +543,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     room_id = create_new_Room(room_name);
     created = true;
     printf("\tcreated room_id: %d\n", room_id);
-  // }
-  // 3. Check if trying to enter same name Room
-  // print_User(user_idx);
-  // print_Room(room_id);
   }
-  // printf("\told_room_name: %s\n", old_room_name);
-  // printf("\tRoom_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
+  // 3. Check if trying to enter same name Room
   if(strcmp(Room_list[room_id].room_name, old_room_name) != 0){
     printf("\tgetting into different Room\n");
     // User is trying to enter different Room
@@ -701,8 +553,6 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
       printf("\t[-]Room is full. Failed to getting in.\n");
       return -3;
     }
-    // print_User(user_idx);
-    // print_Room(room_id);
     int old_room_id = User_list[user_idx].room_id;
     int socket_idx = find_User_socket_idx_from_Room(connfd, old_room_id);
     leave_room(user_idx, old_room_id, socket_idx); // leave the current Room
@@ -719,19 +569,7 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
 
 
 
-
-
-
-
-
 // Intended Space - Don't erase empty lines
-
-
-
-
-
-
-
 
 
 
@@ -773,16 +611,7 @@ void string_to_token(char buf[]){
 
 
 
-
-
-
-
 // Intended Space - Don't erase empty lines
-
-
-
-
-
 
 
 
@@ -865,7 +694,6 @@ int send_userlist_message(int connfd) {
   // output bytes.
   strcat(message, "\n\0");
   printf("Sending: %s", message);
-
   return send_message(connfd, message);
 }
 int send_where_message(int connfd, char *message){
@@ -1165,19 +993,13 @@ void chat_system(int connfd){
   defaultUser.socket = connfd;  // match this User object and the connected socket(client)
   defaultUser.room_id = 0;
 
-  // create_new_Room((char *)"Lobby");
   JOIN_Nickname_Room(connfd, (char *)DEFAULT_USR_NAME, (char *)"Lobby");
-
-  // find the index of User_list[] by socket
 
   while((n=receive_message(connfd, message))>0) {
     printf("From socket[%d]: Server received a meesage of %d bytes: %s\n", connfd, (int)n, message);
-    // int user_idx = get_User_list_index_by_socket(connfd);
-    // int room_id = is_room_name_existing(Room_list[User_list[user_idx].room_id].room_name);
-    // print_User(user_idx);
-    // print_Room(room_id);
 
     n = process_message(connfd, message);
+
     if(n == 99) {
       remove_User_from_belonging_Room(connfd);
       remove_User_from_list(connfd);
@@ -1190,14 +1012,7 @@ void chat_system(int connfd){
 
 
 
-
-
-
 // Intended Space - Don't erase empty lines
-
-
-
-
 
 
 
@@ -1301,7 +1116,6 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
     pthread_t tid;
     pthread_create(&tid, NULL, thread, connfdp);
   }
-
   return 0;
 }
 
