@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include <time.h>
 #include <iostream>
 using namespace std;
 
@@ -388,6 +388,9 @@ int get_number_of_user_list(){
 void increase_number_of_user_list(){
   num_user_list++;
 }
+void decrease_number_of_user_list(){
+  num_user_list--;
+}
 int get_User_list_index_by_socket(int connfd){  
   /** find an User index from User_list[] by comparing corresponding socket(client) **/
   for(int i=0; i<MAX_CLIENTS; i++){
@@ -413,6 +416,7 @@ int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
   User_list[idx].socket = connfd;
   User_list[idx].room_id = room_id;
   print_User(idx);
+  increase_number_of_user_list();
   return idx;
 }
 // int add_User_in_User_list(User user){  // add an User into User_list[]
@@ -505,12 +509,41 @@ int check_socket_by_username(char *user_name){
   }
   return -1;
 }
+int check_is_this_name_existing(char *nickname){
+  int find_name = check_socket_by_username(nickname);
+  if ( find_name > -1){
+    return 1;
+  }
+  return 0;
+}
+int remove_User_from_list(int connfd){
+  int user_idx = get_User_list_index_by_socket(connfd);
+  User_list[user_idx].user_name[0] = '\0';
+  User_list[user_idx].socket = -1;
+  User_list[user_idx].room_id = -1;
+  decrease_number_of_user_list();
+}
+int find_User_socket_idx_from_Room(int connfd, int old_room_id);
+int remove_Room_from_list(int room_id);
+int remove_User_from_belonging_Room(int connfd){
+  int user_idx = get_User_list_index_by_socket(connfd);
+  int room_id = User_list[user_idx].room_id;
+  int sock_idx = find_User_socket_idx_from_Room(connfd, room_id);
+  Room_list[room_id].socket_list_in_Room[sock_idx] = -1;
+  Room_list[room_id].num_users--;
+  if(Room_list[room_id].num_users <= 0){
+    remove_Room_from_list(room_id);
+  }
+}
+
+
 
 
 
 
 
 // Intended Space - Don't erase empty lines
+
 
 
 
@@ -646,7 +679,9 @@ int remove_Room_from_list(int room_id){
     Room_list[room_id].room_id = -1;
     Room_list[room_id].num_users = 0;
     Room_list[room_id].room_name[0] = '\0';
-    Room_list[room_id].socket_list_in_Room[0] = -1;
+    for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
+      Room_list[room_id].socket_list_in_Room[i] = -1;
+    }
     init_chat_buffer_in_Room(room_id);
     decrease_number_of_room_list();
   }  
@@ -677,10 +712,18 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   // return success
   ***/
   // find if a room of same name existing. 
-  // return value: -1:not existing. other values:room_id of the room
+  // RETURN VALUE:  
+  //                 2: [+]New Room [] created. Entering into it.
+  //                 1: [.]Entering existing Room [].
+  //                -1: [-]Same name existing. Creating a new User profile failed.
+  //                -2: [-]Same name existing. Changing nickname failed.
+  //                -3: [-]Room [] is full now. Try again later.
+  //                -4: [-]Max number of Rooms reached! No more Rooms can be created at this moment.
+
   int room_id = is_room_name_existing(room_name);
   // find the index of User_list[] by socket
   int user_idx = get_User_list_index_by_socket(connfd);
+
   bool created = false;
 
   printf("\texisting room_id: %d\n", room_id);
@@ -691,12 +734,22 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
 
   if(user_idx < 0){
     user_idx = find_empty_spot_in_User_list();
+    int is_same_name = check_is_this_name_existing(nickname);
+    if(is_same_name > 0){
+      printf("[-]Same name existing. Creating User profile failed.\n");
+      return -1;
+    }
     create_new_User_at(user_idx, connfd, nickname, room_id);  // create a new User at index
     add_User_in_Room(user_idx, room_id);
     return 1;
   }
   // 1. Check if trying to using same name
   if(strcmp(User_list[user_idx].user_name, nickname) != 0){
+    int is_same_name = check_is_this_name_existing(nickname);
+    if(is_same_name > 0){
+      printf("[-]Same name existing. Changing nickname failed.\n");
+      return -2;
+    }
     printf("\tchanging nickname from %s to %s\n", User_list[user_idx].user_name, nickname);
     change_nickname(user_idx, nickname);  // change nickname
   }
@@ -705,8 +758,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     printf("\tNon-Existing Room!\n");
     // there is no such Room with that name
     if (get_number_of_room_list() >= MAX_ROOM_NUM) { 
-      printf("\tMax number of Rooms reached!\n");
-      return -1;
+      printf("\t[-]Max number of Rooms reached! No more Rooms can be created at this moment.\n");
+      return -4;
     }
     room_id = create_new_Room(room_name);
     created = true;
@@ -723,8 +776,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     // User is trying to enter different Room
     int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);  // find an empty spot in that Room
     if(empty_socket_idx < 0){
-      printf("\tNo more Users in the Room!\n");
-      return -1;
+      printf("\t[-]Room is full. Failed to getting in.\n");
+      return -3;
     }
     // print_User(user_idx);
     // print_Room(room_id);
@@ -734,9 +787,11 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     add_User_in_Room(user_idx, room_id);
   }
   if (created) {
-    return 1;
-  } else {
+    printf("[+]New Room created\n");
     return 2;
+  } else {
+    printf("[.]Entering existing Room\n");
+    return 1;
   }
 }
 
@@ -1098,18 +1153,53 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       char msg_buf[MAX_ROOM_NAME + 30];
       bzero(msg_buf, sizeof(msg_buf));
       int join = JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]);
-      if(join <= -1){
-        strcpy(msg_buf, (char *)"[-]Error creating a room ");
+      // RETURN VALUE:  
+      //                 2: [+]New Room [] created. Entering into it.
+      //                 1: [.]Entering existing Room [].
+      //                -1: [-]Same name existing. Creating a new User profile failed.
+      //                -2: [-]Same name existing. Changing nickname failed.
+      //                -3: [-]Room [] is full now. Try again later.
+      //                -4: [-]Max number of Rooms reached! No more Rooms can be created at this moment.
+      if(join==2){
+        strcpy(msg_buf, (char *)"[+]New Room [");
         strcat(msg_buf, token_array[2]);
+        strcat(msg_buf, (char *)"] created. Entering into it.");
         return send_message(connfd, msg_buf);
       }
-      if(join == 2 || strcmp(token_array[2], (char *)"Lobby") == 0) {
-        strcpy(msg_buf, (char *)"[+]Entering ");
-      } else {
-        strcpy(msg_buf, (char *)"[+]Created a Room ");
+      else if(join == 1){
+        strcpy(msg_buf, (char *)"[.]Entering existing Room [");
+        strcat(msg_buf, token_array[2]);
+        strcat(msg_buf, (char *)"]");
+        return send_message(connfd, msg_buf);
       }
-      strcat(msg_buf, token_array[2]);
+      else if(join == -1){
+        strcpy(msg_buf, (char *)"[-]Same name existing. Creating a new User profile failed.");
+        return send_message(connfd, msg_buf);
+      }
+      else if(join == -2){
+        strcpy(msg_buf, (char *)"[-]Same name existing. Changing nickname failed.");
+        return send_message(connfd, msg_buf);
+      }
+      else if(join == -3){
+        strcpy(msg_buf, (char *)"[-]Room [] is full now. Try again later.");
+        return send_message(connfd, msg_buf);
+      }
+      else if(join == -4){
+        strcpy(msg_buf, (char *)"[-]Max number of Rooms reached! No more Rooms can be created at this moment.");
+        return send_message(connfd, msg_buf);
+      }
       return send_message(connfd, msg_buf);
+      // if(join <= -1){
+      //   strcpy(msg_buf, (char *)"[-]Error creating a room ");
+      //   strcat(msg_buf, token_array[2]);
+      //   return send_message(connfd, msg_buf);
+      // }
+      // if(join == 2 || strcmp(token_array[2], (char *)"Lobby") == 0) {
+      //   strcpy(msg_buf, (char *)"[+]Entering ");
+      // } else {
+      //   strcpy(msg_buf, (char *)"[+]Created a Room ");
+      // }
+      // strcat(msg_buf, token_array[2]);
     }
     else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
             printf("%s\n","\\ROOMS" );
@@ -1118,7 +1208,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
             return send_roomlist_message(connfd);
     }
     else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
-      char msg_buf[20] = "GoodBye";
+      char msg_buf[20] = "SERVER[0]: GoodBye";
       send_message(connfd, msg_buf);
       // close(connfd);
       return 99;
@@ -1137,6 +1227,58 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           printf("%s\n","it is \\HELP" );
           return send_helplist_message(connfd);
     }
+    else if(strncmp(message,"\\CHANGENAME", 10)==0){
+          printf("%s\n","it is \\ChangeName" );
+          
+          string_to_token(message);
+          if(!token_array[1]){
+            printf("\n 1 arguments");
+            return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
+          
+          }
+          else{
+          printf("\n 2 arguments");
+          int idx = get_User_list_index_by_socket(connfd);
+          int room_id=User_list[idx].room_id;
+          char * room_name;
+          room_name =(char*) Room_list[room_id].room_name;
+          
+          printf(" user idx is %d\n", idx);
+          printf(" user room id is %d\n", room_id);
+          printf(" user name is %s\n", token_array[1]);
+          printf(" user room name is %s\n", room_name);
+          JOIN_Nickname_Room(connfd,token_array[1],room_name);
+          }
+        }
+
+    else if(strcmp(message, "\\TIME") == 0){//this part is fine
+          time_t rawtime;
+          struct tm * timeinfo;
+
+          time ( &rawtime );
+          timeinfo = localtime ( &rawtime );
+          printf ( "Current local time and date: %s", asctime (timeinfo) );
+          char msg_buf[20] = "" ;
+          strcat(msg_buf, (char *)"Current local time and date:");
+          strcat(msg_buf,asctime (timeinfo));
+          send_message(connfd, msg_buf);
+    }
+    else if(strncmp(message, "\\KICK",4) == 0){//this part is fine
+          string_to_token(message);
+          if(!token_array[1]){
+            printf("\n 1 arguments");
+            return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
+          
+          }
+          else{
+          int tempSocket = check_socket_by_username(token_array[1]);
+          printf(" user socket is %d\n", tempSocket);
+          char * message = "\\LEAVE";
+          process_message(tempSocket, message);
+        }
+    }
+
+
     // else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
     // }
@@ -1230,6 +1372,8 @@ void chat_system(int connfd){
 
     n = process_message(connfd, message);
     if(n == 99) {
+      remove_User_from_belonging_Room(connfd);
+      remove_User_from_list(connfd);
       close(connfd);
       break;
     }
