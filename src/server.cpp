@@ -505,7 +505,13 @@ int check_socket_by_username(char *user_name){
   }
   return -1;
 }
-
+int check_is_this_name_existing(char *nickname){
+  int find_name = check_socket_by_username(nickname);
+  if ( find_name > -1){
+    return 1;
+  }
+  return 0;
+}
 
 
 
@@ -677,10 +683,19 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   // return success
   ***/
   // find if a room of same name existing. 
-  // return value: -1:not existing. other values:room_id of the room
+  // RETURN VALUE:  
+  //                 2: [+]New Room created. Entering into it.
+  //                 1: [.]Entering an existing Room.
+  //                -1: not existing. other values:room_id of the room
+  //                -2: [-]Same name existing. Creating User profile failed.
+  //                -3: [-]Same name existing. Changing nickname failed.
+  //                -4: [-]Room is full. Failed to getting in.
+  //                -5: [-]Max number of Rooms reached! No more Rooms can be created at this moment.
+
   int room_id = is_room_name_existing(room_name);
   // find the index of User_list[] by socket
   int user_idx = get_User_list_index_by_socket(connfd);
+
   bool created = false;
 
   printf("\texisting room_id: %d\n", room_id);
@@ -691,12 +706,22 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
 
   if(user_idx < 0){
     user_idx = find_empty_spot_in_User_list();
+    int is_same_name = check_is_this_name_existing(nickname);
+    if(is_same_name > 0){
+      printf("[-]Same name existing. Creating User profile failed.\n");
+      return -2;
+    }
     create_new_User_at(user_idx, connfd, nickname, room_id);  // create a new User at index
     add_User_in_Room(user_idx, room_id);
     return 1;
   }
   // 1. Check if trying to using same name
   if(strcmp(User_list[user_idx].user_name, nickname) != 0){
+    int is_same_name = check_is_this_name_existing(nickname);
+    if(is_same_name > 0){
+      printf("[-]Same name existing. Changing nickname failed.\n");
+      return -3;
+    }
     printf("\tchanging nickname from %s to %s\n", User_list[user_idx].user_name, nickname);
     change_nickname(user_idx, nickname);  // change nickname
   }
@@ -705,8 +730,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     printf("\tNon-Existing Room!\n");
     // there is no such Room with that name
     if (get_number_of_room_list() >= MAX_ROOM_NUM) { 
-      printf("\tMax number of Rooms reached!\n");
-      return -1;
+      printf("\t[-]Max number of Rooms reached! No more Rooms can be created at this moment.\n");
+      return -5;
     }
     room_id = create_new_Room(room_name);
     created = true;
@@ -723,8 +748,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     // User is trying to enter different Room
     int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);  // find an empty spot in that Room
     if(empty_socket_idx < 0){
-      printf("\tNo more Users in the Room!\n");
-      return -1;
+      printf("\t[-]Room is full. Failed to getting in.\n");
+      return -4;
     }
     // print_User(user_idx);
     // print_Room(room_id);
@@ -734,8 +759,10 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
     add_User_in_Room(user_idx, room_id);
   }
   if (created) {
+    printf("[+]New Room created\n");
     return 1;
   } else {
+    printf("[.]Entering existing Room\n");
     return 2;
   }
 }
@@ -1098,6 +1125,11 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       char msg_buf[MAX_ROOM_NAME + 30];
       bzero(msg_buf, sizeof(msg_buf));
       int join = JOIN_Nickname_Room(connfd, (char *)token_array[1],(char *)token_array[2]);
+      // RETURN VALUE:  -1: not existing. other values:room_id of the room
+      //                -2: [-]Same name existing. Creating User profile failed.
+      //                -3: [-]Same name existing. Changing nickname failed.
+      //                -4: [-]Room is full. Failed to getting in.
+      //                -5: [-]Max number of Rooms reached! No more Rooms can be created at this moment.
       if(join <= -1){
         strcpy(msg_buf, (char *)"[-]Error creating a room ");
         strcat(msg_buf, token_array[2]);
