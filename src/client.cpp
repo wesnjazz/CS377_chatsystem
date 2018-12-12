@@ -7,7 +7,7 @@
 #define BUF_SIZE_EX 3
 #define RECEIVE_EX 4
 #define LEAVE_EX 5
-#define MESSAGE_LINES 30
+#define MESSAGE_LINES 500
 
 Client::Client(int portInst){
 	port=portInst;

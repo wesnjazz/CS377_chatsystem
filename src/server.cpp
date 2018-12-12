@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include <time.h>
 #include <iostream>
 using namespace std;
 
@@ -388,6 +388,9 @@ int get_number_of_user_list(){
 void increase_number_of_user_list(){
   num_user_list++;
 }
+void decrease_number_of_user_list(){
+  num_user_list--;
+}
 int get_User_list_index_by_socket(int connfd){  
   /** find an User index from User_list[] by comparing corresponding socket(client) **/
   for(int i=0; i<MAX_CLIENTS; i++){
@@ -413,6 +416,7 @@ int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
   User_list[idx].socket = connfd;
   User_list[idx].room_id = room_id;
   print_User(idx);
+  increase_number_of_user_list();
   return idx;
 }
 // int add_User_in_User_list(User user){  // add an User into User_list[]
@@ -512,11 +516,34 @@ int check_is_this_name_existing(char *nickname){
   }
   return 0;
 }
+int remove_User_from_list(int connfd){
+  int user_idx = get_User_list_index_by_socket(connfd);
+  User_list[user_idx].user_name[0] = '\0';
+  User_list[user_idx].socket = -1;
+  User_list[user_idx].room_id = -1;
+  decrease_number_of_user_list();
+}
+int find_User_socket_idx_from_Room(int connfd, int old_room_id);
+int remove_Room_from_list(int room_id);
+int remove_User_from_belonging_Room(int connfd){
+  int user_idx = get_User_list_index_by_socket(connfd);
+  int room_id = User_list[user_idx].room_id;
+  int sock_idx = find_User_socket_idx_from_Room(connfd, room_id);
+  Room_list[room_id].socket_list_in_Room[sock_idx] = -1;
+  Room_list[room_id].num_users--;
+  if(Room_list[room_id].num_users <= 0){
+    remove_Room_from_list(room_id);
+  }
+}
+
+
+
 
 
 
 
 // Intended Space - Don't erase empty lines
+
 
 
 
@@ -652,7 +679,9 @@ int remove_Room_from_list(int room_id){
     Room_list[room_id].room_id = -1;
     Room_list[room_id].num_users = 0;
     Room_list[room_id].room_name[0] = '\0';
-    Room_list[room_id].socket_list_in_Room[0] = -1;
+    for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
+      Room_list[room_id].socket_list_in_Room[i] = -1;
+    }
     init_chat_buffer_in_Room(room_id);
     decrease_number_of_room_list();
   }  
@@ -740,10 +769,10 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   // print_User(user_idx);
   // print_Room(room_id);
   }
-  printf("\t old_room_name: %s\n", old_room_name);
-  printf("\t Room_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
+  printf("\told_room_name: %s\n", old_room_name);
+  printf("\tRoom_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
   if(strcmp(Room_list[room_id].room_name, old_room_name) != 0){
-    printf("\t getting into different Room\n");
+    printf("\tgetting into different Room\n");
     // User is trying to enter different Room
     int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);  // find an empty spot in that Room
     if(empty_socket_idx < 0){
@@ -1179,7 +1208,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
             return send_roomlist_message(connfd);
     }
     else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
-      char msg_buf[20] = "GoodBye";
+      char msg_buf[20] = "SERVER[0]: GoodBye";
       send_message(connfd, msg_buf);
       // close(connfd);
       return 99;
@@ -1220,9 +1249,36 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           printf(" user room name is %s\n", room_name);
           JOIN_Nickname_Room(connfd,token_array[1],room_name);
           }
+        }
 
+    else if(strcmp(message, "\\TIME") == 0){//this part is fine
+          time_t rawtime;
+          struct tm * timeinfo;
 
+          time ( &rawtime );
+          timeinfo = localtime ( &rawtime );
+          printf ( "Current local time and date: %s", asctime (timeinfo) );
+          char msg_buf[20] = "" ;
+          strcat(msg_buf, (char *)"Current local time and date:");
+          strcat(msg_buf,asctime (timeinfo));
+          send_message(connfd, msg_buf);
     }
+    else if(strncmp(message, "\\KICK",4) == 0){//this part is fine
+          string_to_token(message);
+          if(!token_array[1]){
+            printf("\n 1 arguments");
+            return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
+          
+          }
+          else{
+          int tempSocket = check_socket_by_username(token_array[1]);
+          printf(" user socket is %d\n", tempSocket);
+          char * message = "\\LEAVE";
+          process_message(tempSocket, message);
+        }
+    }
+
+
     // else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
     // }
@@ -1316,6 +1372,8 @@ void chat_system(int connfd){
 
     n = process_message(connfd, message);
     if(n == 99) {
+      remove_User_from_belonging_Room(connfd);
+      remove_User_from_list(connfd);
       close(connfd);
       break;
     }
