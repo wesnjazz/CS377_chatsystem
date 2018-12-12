@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include <time.h>
 #include <iostream>
 using namespace std;
 
@@ -1220,9 +1220,23 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           printf(" user room name is %s\n", room_name);
           JOIN_Nickname_Room(connfd,token_array[1],room_name);
           }
+        }
 
+    else if(strcmp(message, "\\TIME") == 0){//this part is fine
+          time_t rawtime;
+          struct tm * timeinfo;
 
+          time ( &rawtime );
+          timeinfo = localtime ( &rawtime );
+          printf ( "Current local time and date: %s", asctime (timeinfo) );
+          char msg_buf[20] = "" ;
+          strcat(msg_buf, (char *)"Current local time and date:");
+          strcat(msg_buf,asctime (timeinfo));
+          send_message(connfd, msg_buf);
     }
+
+
+    
     // else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
     // }
