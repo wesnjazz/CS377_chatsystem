@@ -42,9 +42,9 @@ void Client::connecting(){
 	printf("[+]Connected to Server.\n");
 }
 
-string* Client::readFile(string fileName){
+string* Client::readFile(char* fileName){
 
-	ifstream file(fileName.c_str());
+	ifstream file(fileName);
 	string* info=new string[MESSAGE_LINES];
 
   	if (file.is_open())
@@ -55,6 +55,7 @@ string* Client::readFile(string fileName){
     		i++;
     	}
     	file.close();
+    	lines=i;
     }
     else{
     	printf("[-]Not such file exits.\n");
@@ -62,7 +63,28 @@ string* Client::readFile(string fileName){
     return info; 
 }
 
-void Client::sendMessage(char* inputBuffer){
+void Client::scripting(char* fileName){
+	string* info=readFile(fileName);
+	printf("%s\n\n",fileName );
+	// printf("%s\n",(*(info+5)).c_str());
+  	for(int i=0; i<lines; i++){
+  		// printf("%s\n",(*(info+i)).c_str());
+  	  // char* copy;
+      // strcpy(copy, (*(info+i)).c_str());
+  		// char* inst=(*(info+i)).c_str();
+  		char buffer[BUF_SIZE];
+  		strcpy(buffer,(*(info+i)).c_str());
+  		if(buffer[0]!='\n') buffer[strlen(buffer)-1] = '\0';
+
+  		printf("\n%s: %s\n", getName(),buffer);
+      	sendMessage(buffer);
+      	// sendMessage("\\ROOMS");
+
+  	}
+}
+
+
+void Client::sendMessage(const char* inputBuffer){
 	if(socket_status<0){
 		throw SOCKET_EX;
 	}else if(connection_status<0){
@@ -71,22 +93,40 @@ void Client::sendMessage(char* inputBuffer){
 		throw BUF_SIZE_EX;
 	}
 
+	char outputBuffer[2000];
 	send(socket_status, inputBuffer, strlen(inputBuffer), 0);
 
 	receive_status =recv(socket_status, outputBuffer, BUF_SIZE, 0);
 	if(receive_status<0)
 		throw RECEIVE_EX;
 
-	printf("Server:\t\t %s\n", outputBuffer);
 
+	if(strncmp(outputBuffer, "SERVER[0]:",10) == 0){
 
-	if(strcmp(inputBuffer, "\\LEAVE") == 0
-		&&strncmp(outputBuffer, "GoodBye",9) == 0){
-
+		printf("%s\n", outputBuffer);
 		close(socket_status);
 		socket_status=-1;
 		printf("[-]Disconnected from server.\n");
 		throw LEAVE_EX;
 	}
+	else if(strncmp(outputBuffer, "SERVER[1]:",10) == 0){
+		printf("%s\n", outputBuffer);
+		char infoCopy[2000];
+		strcpy(infoCopy,inputBuffer);
+
+		char* token = strtok (infoCopy," ");
+		token = strtok(NULL, " ");
+		name=token;
+	}
+	else if(strncmp(outputBuffer, "SERVER[2]:",10) == 0){
+		char* convert=&(outputBuffer[0]);
+		string toConvert(convert);
+		string whisper = toConvert.substr(11, toConvert.length()-1);
+		printf("%s\n", whisper); 
+	}
+	else{
+		printf("%s\n", outputBuffer);
+	}
+
 }
 
