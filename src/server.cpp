@@ -763,17 +763,21 @@ int send_where_message(int connfd, char *message){
 int send_helplist_message(int connfd) { // this part do not need help list.】
   char message[BUF_MAX_20LINES * BUF_MAX_100CHARS];
   bzero(message, sizeof(message));
-  const char *temp_user_list[8];
-    temp_user_list[0] = "\\JOIN nickname room, join other room with name you want ";
-    temp_user_list[1] = "\\ROOMS,list the room names  of server has right now";
-    temp_user_list[2] = "\\LEAVE, leave server, close connection";
-    temp_user_list[3] = "\\WHO, show your name in this room";
-    temp_user_list[4] = "\\nickname message, whisper message to nickname you want";
-    temp_user_list[5] = "\\HELP, show list of command";
-    temp_user_list[6] = "\\WHERE, show where you at which room";
-    temp_user_list[7] = "\\WHERE nickname, show the room name of this user located";
-    temp_user_list[8] = "\\WHISPER nickname, whisper to a user that only both of you can see the message";
-  for (int i = 0; i < 8; i++) {
+  const char *temp_user_list[12];
+    temp_user_list[0] = "\n\\JOIN nickname room\t: Join other room with the name you want ";
+    temp_user_list[1] = "\\ROOMS\t\t\t: List all the Room names";
+    temp_user_list[2] = "\\LEAVE\t\t\t: Leave server, close connection";
+    temp_user_list[3] = "\\WHO\t\t\t: List all users in this room";
+    temp_user_list[4] = "\\HELP\t\t\t: Show list of command";
+    temp_user_list[5] = "\\nickname message\t: Whisper (send private message) to nickname(same or another Room) you want";
+    temp_user_list[6] = "\n\n *** Creative Features ***\n";
+    temp_user_list[7] = "\\KICK nickname\t\t: You can kick someone off any user in the server. >.< (Be respectful!)";
+    temp_user_list[8] = "\\WHERE\t\t\t: Show where you are at which room";
+    temp_user_list[9] = "\\WHERE nickname\t\t: Show the room name of target user is located";
+    temp_user_list[10] = "\\CHANGENAME\t\t: Change the nickname conveniently without using JOIN command";
+    temp_user_list[11] = "\\TIME\t\t\t: Show the current time";
+    // temp_user_list[8] = "\\WHISPER nickname\t\t: Whisper to a user that only both of you can see the message";
+  for (int i = 0; i < 12; i++) {
     if (strcmp(temp_user_list[i], "") == 0) break;//room list
     strcat(message, temp_user_list[i]);//room list
     strcat(message, "\n");
