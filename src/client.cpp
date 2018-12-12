@@ -78,6 +78,7 @@ void Client::scripting(char* fileName){
 
   		printf("\n%s: %s\n", getName(),buffer);
       	sendMessage(buffer);
+      	sleep(2);
       	// sendMessage("\\ROOMS");
 
   	}
@@ -100,11 +101,6 @@ void Client::sendMessage(const char* inputBuffer){
 	receive_status =recv(socket_status, outputBuffer, BUF_SIZE, 0);
 	if(receive_status<0)
 		throw RECEIVE_EX;
-<<<<<<< HEAD
-=======
-	system("clear");
-	printf("Server:\t\t %s\n", outputBuffer);
->>>>>>> master
 
 
 	if(strncmp(outputBuffer, "SERVER[0]:",10) == 0){
