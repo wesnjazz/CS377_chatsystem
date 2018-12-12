@@ -12,13 +12,17 @@
 #include <iostream>
 #include "server.h"
 
-// Initialize the message buffer to empty strings.
+/********************************
+  Initialization PART
+********************************/
 void init_entire_message_buf() {
+  /* Initialize the message buffer to empty strings. */
   pthread_mutex_lock(&lock);
   bzero(entire_message_buf, sizeof(entire_message_buf));
   pthread_mutex_unlock(&lock);
 }
-void init_Rooms_Users_Messages(){ 
+void init_Rooms_Users(){ 
+  /* initialize Rooms and Users */
   User initUser;
   initUser.user_name[0] = '\0';
   initUser.socket = -1;
@@ -43,6 +47,7 @@ void init_Rooms_Users_Messages(){
     init_chat_buffer_in_Room(i);
   }
 }
+/* helper functions of printing for debugging purpose */
 void print_Room(int r_id){
   printf("Room_list[%d] - room_name: %s  -  room_id: %d  -  num_users: %d\n",
           r_id, Room_list[r_id].room_name, Room_list[r_id].room_id, Room_list[r_id].num_users);
@@ -101,8 +106,11 @@ int init_chat_buffer_in_Room(int room_id){
   Room_list[room_id].chat_buffer_HEAD = 0;
   Room_list[room_id].chat_buffer_TAIL = 0;
   pthread_mutex_unlock(&room);
+  return 1;
 }
 int add_message_into_chat_buffer(int connfd, int room_id, char *message){
+  /** add incoming message into the char_buffer of the specific Room **/
+  /** purpose: recording chat history **/
   int tail = Room_list[room_id].chat_buffer_TAIL;
   int head = Room_list[room_id].chat_buffer_HEAD;
   message[BUF_MAX_100CHARS - MAX_USER_NAME - 3]='\0';
@@ -117,6 +125,7 @@ int add_message_into_chat_buffer(int connfd, int room_id, char *message){
   strncpy(prefix, User_list[user_idx].user_name, MAX_USER_NAME);
   strcat(prefix, (char *)": ");
 
+  // Circular Buffer calculation
   tail++;
   if (tail >= BUF_MAX_20LINES){
     tail = 0;
@@ -126,7 +135,6 @@ int add_message_into_chat_buffer(int connfd, int room_id, char *message){
     if (head >= BUF_MAX_20LINES){
       head = 0;
     }
-    // strcpy(Room_list[room_id].chat_buffer[head], title);
     add_title_into_chat_buffer(room_id, head);
     pthread_mutex_lock(&room);
     Room_list[room_id].chat_buffer_HEAD = head;
@@ -138,15 +146,14 @@ int add_message_into_chat_buffer(int connfd, int room_id, char *message){
   pthread_mutex_lock(&room);
   Room_list[room_id].chat_buffer_TAIL = tail;
   pthread_mutex_unlock(&room);
+  return 1;
 }
 void get_chat_buffer(int room_id){
-  // printf("\tget_chat_buffer() begin\n");
+  /** getting the char_buffer from the specific Room **/
   char entire_message[BUF_MAX_20LINES * BUF_MAX_100CHARS];
   bzero(entire_message, sizeof(entire_message));
-
   int tail = Room_list[room_id].chat_buffer_TAIL;
   int head = Room_list[room_id].chat_buffer_HEAD;
-  
   if(tail>head){
     for(int i=head; i<tail; i++){
       strcat(entire_message, Room_list[room_id].chat_buffer[i]);
@@ -160,9 +167,6 @@ void get_chat_buffer(int room_id){
       strcat(entire_message, Room_list[room_id].chat_buffer[i]);
     }
   }
-  // printf("\tentire_message:\n\t%s\n", entire_message);
-  // printf("\tget_chat_buffer() finish\n");
-  // return entire_message;
 }
 void print_chat_buffer(int room_id){
   for(int i=0; i<BUF_MAX_20LINES; i++){
@@ -170,14 +174,10 @@ void print_chat_buffer(int room_id){
   }
 }
 int create_entire_message_from_chat_buffer(int room_id){
-  // printf("\tcreate_entire_message_from_chat_buffer() begin\n");
-  // printf("\tbefore init: %s\n", entire_message_buf);
+  /** build up the entire message for boradcasting chat history to all users in the Room **/
   init_entire_message_buf();
-  // printf("\t after init: %s\n", entire_message_buf);
   int tail = Room_list[room_id].chat_buffer_TAIL;
   int head = Room_list[room_id].chat_buffer_HEAD;
-  // printf("\t head: %d  tail: %d\n", head, tail);
-  
   if(head==tail){
     strcat(entire_message_buf, Room_list[room_id].chat_buffer[head]);
     return 1;
@@ -201,7 +201,6 @@ int create_entire_message_from_chat_buffer(int room_id){
       strcat(entire_message_buf, (char *)"\n");
     }
   }
-  // printf("\tcreate_entire_message_from_chat_buffer() finish\n");
   return 1;
 }
 
@@ -263,19 +262,21 @@ int get_number_of_user_list(){
   return num_user_list;
 }
 void increase_number_of_user_list(){
+  /** increase number of User **/
   pthread_mutex_lock(&user);
   num_user_list++;
   pthread_mutex_unlock(&user);
 }
 void decrease_number_of_user_list(){
+  /** decrease number of User **/
   pthread_mutex_lock(&user);
   num_user_list--;
   pthread_mutex_lock(&user);
 }
 int get_User_list_index_by_socket(int connfd){  
   /** find an User index from User_list[] by comparing corresponding socket(client) **/
+  /** RETURN: index of the given socket(client) **/
   for(int i=0; i<MAX_CLIENTS; i++){
-    // printf("User_list[%d]: %s %d %d\n", i, User_list[i].user_name, User_list[i].socket, User_list[i].room_id);
     if(User_list[i].socket != -1 && User_list[i].socket == connfd){  // found the corresponding socket(client)
       return i;   // return index number of corresponding socket(client)
     }
@@ -283,6 +284,8 @@ int get_User_list_index_by_socket(int connfd){
   return -1;  // that socket(client) is not existing
 }
 int find_empty_spot_in_User_list(){
+  /** find if there is an empty spot for a User to be created **/
+  /** RETURN: index of the empty spot from User_list **/
   int i = 0;
   for(i=0; i<MAX_CLIENTS; i++){
     if(User_list[i].socket==-1){
@@ -292,6 +295,8 @@ int find_empty_spot_in_User_list(){
   return -1;
 }
 int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
+  /** create a new User profile into User_list */
+  /** RETURN: index of the location where the User profile is created **/
   if(get_number_of_user_list() > MAX_CLIENTS) { return -1; }
   strcpy(User_list[idx].user_name, nickname);
   pthread_mutex_lock(&user);
@@ -321,13 +326,17 @@ int add_User_in_Room(int user_idx, int room_id){
   return 1;
 }
 int change_nickname(int idx, char *nickname){
+  /** Change the User's nickname **/
+  /** RETURN: 1 - Succedded to change name, -1 - Max number of User's reached **/
   if (strlen(nickname) > MAX_USER_NAME) { return -1; }
   pthread_mutex_lock(&user);
   strcpy(User_list[idx].user_name, nickname);
   pthread_mutex_unlock(&user);
   return 1;
 }
-int check_user_in_which_room(char *nickname){ //check user in which room 
+int check_user_in_which_room(char *nickname){
+  /** Check where the User is located amogn Rooms **/
+  /** RETURN: index of the Room which that name of User is currently in **/
   for(int i=0;i<MAX_CLIENTS;i++){ //loop whole server ,and return room id. or -1 if not existed.
     char *tempName=User_list[i].user_name;
     if(strcmp(nickname,tempName)==0)//check name if same.
@@ -338,6 +347,8 @@ int check_user_in_which_room(char *nickname){ //check user in which room
   return -1;
 }
 int check_socket_by_username(char *user_name){
+  /** Get a socket descriptor by user name **/
+  /** RETURN: index of the given socket(client) **/
   for(int i=0; i<MAX_CLIENTS; i++){
     if(User_list[i].user_name[0] != '\0' && strcmp(user_name, User_list[i].user_name) == 0) {
       return User_list[i].socket;
@@ -346,6 +357,8 @@ int check_socket_by_username(char *user_name){
   return -1;
 }
 int check_is_this_name_existing(char *nickname){
+  /** Check if the given name is existing already **/
+  /** RETURN: 1 - existing, 0 - not existing **/
   int find_name = check_socket_by_username(nickname);
   if ( find_name > -1){
     return 1;
@@ -353,6 +366,7 @@ int check_is_this_name_existing(char *nickname){
   return 0;
 }
 int remove_User_from_list(int connfd){
+  /** Remove a client(socket) from the server by erasing socket **/
   int user_idx = get_User_list_index_by_socket(connfd);
   pthread_mutex_lock(&user);
   User_list[user_idx].user_name[0] = '\0';
@@ -360,8 +374,10 @@ int remove_User_from_list(int connfd){
   User_list[user_idx].room_id = -1;
   pthread_mutex_unlock(&user);
   decrease_number_of_user_list();
+  return 1;
 }
 int remove_User_from_belonging_Room(int connfd){
+  /** Remove the user from its belonging Room **/
   int user_idx = get_User_list_index_by_socket(connfd);
   int room_id = User_list[user_idx].room_id;
   int sock_idx = find_User_socket_idx_from_Room(connfd, room_id);
@@ -372,6 +388,7 @@ int remove_User_from_belonging_Room(int connfd){
   if(Room_list[room_id].num_users <= 0){
     remove_Room_from_list(room_id);
   }
+  return 1;
 }
 
 
@@ -387,12 +404,16 @@ int get_number_of_room_list(){ //room list
   return num_room_list;
 }
 int increase_number_of_room_list(){
+  /** Increase the number of Room **/
   num_room_list++;  
 }
 int decrease_number_of_room_list(){
+  /** Decrease the number of Room **/
   num_room_list--;  
 }
 int find_empty_spot_in_Room_list(){
+  /** Find an empty spot in the Room list to create to a new Room **/
+  /** RETURN: index of the empty spot in the Room **/
   int i = 0;
   for(i=0; i<MAX_ROOM_NUM; i++){
     if(Room_list[i].room_id == -1){
@@ -423,6 +444,8 @@ int create_new_Room(char *room_name){
   return empty_room_idx;
 }
 int is_room_name_existing(char *room_name){
+  /** Check if the given name of Room existing **/
+  /** RETURN: index of the Room **/
   printf("\tchecking is_room_name_existing() with %s\n", room_name);
   for(int i=0; i<MAX_ROOM_NUM; i++){
     if (strcmp(Room_list[i].room_name, room_name) == 0 ){ // there is an existing room with the same name
@@ -434,6 +457,8 @@ int is_room_name_existing(char *room_name){
   return -1;  // there is no room with the same name
 }
 int find_empty_spot_socket_list_in_Room(int room_id){
+  /** Check an empty spot in the specific Room so that let a client get into that Room **/
+  /** RETURN: index of that socket **/
   if(Room_list[room_id].num_users > MAX_USER_IN_A_ROOM) {
     return -1;
   }
@@ -736,7 +761,7 @@ int send_where_message(int connfd, char *message){
   return send_message(connfd, buffer);
 }
 int send_helplist_message(int connfd) { // this part do not need help list.】
-  char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
+  char message[BUF_MAX_20LINES * BUF_MAX_100CHARS];
   bzero(message, sizeof(message));
   const char *temp_user_list[8];
     temp_user_list[0] = "\\JOIN nickname room, join other room with name you want ";
@@ -1078,7 +1103,7 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
   int listenfd = open_listenfd(port);
 
   // Initialize ROOMS, USERS, MESSAGES
-  init_Rooms_Users_Messages();
+  init_Rooms_Users();
 
   initialize_sockets();
   print_sockets();

@@ -78,7 +78,7 @@ void Client::scripting(char* fileName){
 
   		printf("\n%s: %s\n", getName(),buffer);
       	sendMessage(buffer);
-      	usleep((unsigned int)100000);
+      	usleep((unsigned int)200000);
       	// sleep(2);
       	// sendMessage("\\ROOMS");
 

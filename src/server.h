@@ -9,7 +9,7 @@
 #define MAX_ROOM_NAME 30
 #define MAX_MSG_CHAR 100
 
-#define BUF_MAX_20LINES 35
+#define BUF_MAX_20LINES 20
 #define BUF_MAX_100CHARS 100
 #define BUF_SMALL_300 300
 
