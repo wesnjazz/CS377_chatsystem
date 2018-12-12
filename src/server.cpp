@@ -740,10 +740,10 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   // print_User(user_idx);
   // print_Room(room_id);
   }
-  printf("\told_room_name: %s\n", old_room_name);
-  printf("\tRoom_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
+  printf("\t old_room_name: %s\n", old_room_name);
+  printf("\t Room_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
   if(strcmp(Room_list[room_id].room_name, old_room_name) != 0){
-    printf("\tgetting into different Room\n");
+    printf("\t getting into different Room\n");
     // User is trying to enter different Room
     int empty_socket_idx = find_empty_spot_socket_list_in_Room(room_id);  // find an empty spot in that Room
     if(empty_socket_idx < 0){
@@ -1197,6 +1197,31 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     else if(strcmp(message, "\\HELP") == 0){//this part is fine
           printf("%s\n","it is \\HELP" );
           return send_helplist_message(connfd);
+    }
+    else if(strncmp(message,"\\CHANGENAME", 10)==0){
+          printf("%s\n","it is \\ChangeName" );
+          
+          string_to_token(message);
+          if(!token_array[1]){
+            printf("\n 1 arguments");
+            return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
+          
+          }
+          else{
+          printf("\n 2 arguments");
+          int idx = get_User_list_index_by_socket(connfd);
+          int room_id=User_list[idx].room_id;
+          char * room_name;
+          room_name =(char*) Room_list[room_id].room_name;
+          
+          printf(" user idx is %d\n", idx);
+          printf(" user room id is %d\n", room_id);
+          printf(" user name is %s\n", token_array[1]);
+          printf(" user room name is %s\n", room_name);
+          JOIN_Nickname_Room(connfd,token_array[1],room_name);
+          }
+
+
     }
     // else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
