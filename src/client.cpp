@@ -137,7 +137,7 @@ void Client::sendMessage(const char* inputBuffer){
 		printf("%s\n", whisper); 
 	}
 	else{
-		// system("clear");
+		system("clear");
 		printf("%s\n", outputBuffer);
 	}
 
