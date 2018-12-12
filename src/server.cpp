@@ -1234,6 +1234,20 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           strcat(msg_buf,asctime (timeinfo));
           send_message(connfd, msg_buf);
     }
+    else if(strncmp(message, "\\KICK",4) == 0){//this part is fine
+          string_to_token(message);
+          if(!token_array[1]){
+            printf("\n 1 arguments");
+            return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
+          
+          }
+          else{
+          int tempSocket = check_socket_by_username(token_array[1]);
+          printf(" user socket is %d\n", tempSocket);
+          char * message = "\\LEAVE";
+          process_message(tempSocket, message);
+        }
+    }
 
 
     
