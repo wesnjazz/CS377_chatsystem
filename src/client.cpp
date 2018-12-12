@@ -65,20 +65,28 @@ string* Client::readFile(char* fileName){
 
 void Client::scripting(char* fileName){
 	string* info=readFile(fileName);
-	printf("%s\n\n",fileName );
+	// printf("%s\n\n",fileName );
 	// printf("%s\n",(*(info+5)).c_str());
   	for(int i=0; i<lines; i++){
   		// printf("%s\n",(*(info+i)).c_str());
   	  // char* copy;
       // strcpy(copy, (*(info+i)).c_str());
   		// char* inst=(*(info+i)).c_str();
-  		char buffer[BUF_SIZE];
-  		strcpy(buffer,(*(info+i)).c_str());
-  		if(buffer[0]!='\n') buffer[strlen(buffer)] = '\0';
 
+  		char buffer[BUF_SIZE];
+  		bzero(buffer, sizeof(buffer));
+  		strcpy(buffer,(*(info+i)).c_str());
+  		// printf("%s\n", buffer);
+  		buffer[strlen(buffer)-1]='\0';
+  		// if(buffer[0]!='\n' && i!=lines) buffer[strlen(buffer)-1] = '\0';
+
+  		if(strcmp(buffer, (char *)"\\LEAV") == 0) {
+  			buffer[strlen(buffer)] = 'E';
+  			buffer[strlen(buffer)+1] = '\0';
+  		}
   		printf("\n%s: %s\n", getName(),buffer);
       	sendMessage(buffer);
-      	usleep((unsigned int)200000);
+      	usleep((unsigned int)1000000);
       	// sleep(2);
       	// sendMessage("\\ROOMS");
 

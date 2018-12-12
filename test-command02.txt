@@ -1,0 +1,11 @@
+\ROOMS
+\JOIN TimRichard CS377
+hi
+hello
+today no class
+come to the office hour
+Have a good vacation.
+\WHO
+\HELP
+\LAEVE
+\LEAVE

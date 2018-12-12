@@ -1,0 +1,17 @@
+\ROOMS
+\JOIN Kobe NBA
+\ROOMS
+\JOIN Jordan NBA
+\ROOMS
+\JOIN Olajuwon AllStar
+\ROOMS
+\JOIN Ronaldo Juventus
+\ROOMS
+\WHO
+\WHERE
+\HELP
+\CHANGENAME TimRichard
+\CHANGENAME Jared
+\TIME
+\LAEVE
+\LEAVE

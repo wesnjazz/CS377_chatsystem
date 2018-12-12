@@ -827,7 +827,7 @@ int send_chat_message(int connfd, char *message){
     // printf("before add_message()\n");
     add_message_into_chat_buffer(connfd, room_id, message);
     // printf("after add_message()\n");
-    print_chat_buffer(room_id);
+    // print_chat_buffer(room_id);
   }
   create_entire_message_from_chat_buffer(room_id);
   // printf("\tentire_message_buf: %s\n", entire_message_buf);
@@ -1049,10 +1049,10 @@ void chat_system(int connfd){
 
     int user_idx = get_User_list_index_by_socket(connfd);
     n = process_message(connfd, message);
-    print_User(user_idx);
-    print_Room(Room_list[user_idx].room_id);
-    print_Room_list();
-    print_sockets();
+    // print_User(user_idx);
+    // print_Room(Room_list[user_idx].room_id);
+    // print_Room_list();
+    // print_sockets();
 
     if(n == 99) {
       remove_User_from_belonging_Room(connfd);
