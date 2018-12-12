@@ -248,7 +248,21 @@ void delete_socket(int connfd){ // find a matching socket and delete it.
   }
   pthread_mutex_unlock(&lock);
 }
-
+int erase_all_info_of_socket_from_server(int connfd){
+  for(int i=0; i<MAX_ROOM_NUM; i++){
+    for(int j=0; j<MAX_USER_IN_A_ROOM; j++){
+      if(Room_list[i].socket_list_in_Room[j] == connfd) {
+        Room_list[i].socket_list_in_Room[j] = -1;
+        // Room_list[i].num_users--;
+      }
+    }
+  }
+  for(int i=0; i<MAX_CLIENTS; i++){
+    if(socket_list[i] == connfd) {
+      socket_list[i] = -1;
+    }
+  }
+}
 
 
 // Intended Space - Don't erase empty lines
@@ -884,9 +898,14 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     }
     else if(strcmp(message, "\\LEAVE") == 0){
       char msg_buf[20] = "SERVER[0]: GoodBye";
-      send_message(connfd, msg_buf);
+// int leave_room(int user_idx, int old_room_id, int socket_idx){ // leave the current Room
+      int user_idx = get_User_list_index_by_socket(connfd);
+      int room_id = User_list[user_idx].room_id;
+      int socket_idx = find_User_socket_idx_from_Room(connfd, room_id);
+      leave_room(user_idx, room_id, socket_idx);
+      return send_message(connfd, msg_buf);
       // close(connfd);
-      return 99;
+      // return 99;
     }
     else if(strncmp(message, "\\WHERE", 5) == 0){
       printf("%s\n","\\WHERE" );
@@ -1029,14 +1048,17 @@ void chat_system(int connfd){
     printf("From socket[%d]: Server received a meesage of %d bytes: %s\n", connfd, (int)n, message);
 
     int user_idx = get_User_list_index_by_socket(connfd);
-    print_User(user_idx);
     n = process_message(connfd, message);
+    print_User(user_idx);
+    print_Room(Room_list[user_idx].room_id);
+    print_Room_list();
+    print_sockets();
 
     if(n == 99) {
       remove_User_from_belonging_Room(connfd);
       remove_User_from_list(connfd);
       // close(connfd);
-      delete_socket(connfd);
+      // delete_socket(connfd);
       break;
     }
     bzero(message, sizeof(message));  // reintialize the message[] buffer
@@ -1165,6 +1187,7 @@ void *thread(void *vargp) {
   print_sockets();
   chat_system(connfd);
   printf("[-]Client with socket [%d] disconnected.\n", connfd);
+  // erase_all_info_of_socket_from_server(connfd);
   delete_socket(connfd);
   print_sockets();
   // Don't forget to close the connection!
