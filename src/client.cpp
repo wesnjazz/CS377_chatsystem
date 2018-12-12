@@ -96,9 +96,15 @@ void Client::sendMessage(const char* inputBuffer){
 	char outputBuffer[2000];
 	send(socket_status, inputBuffer, strlen(inputBuffer), 0);
 
+	init_outputBuffer();
 	receive_status =recv(socket_status, outputBuffer, BUF_SIZE, 0);
 	if(receive_status<0)
 		throw RECEIVE_EX;
+<<<<<<< HEAD
+=======
+	system("clear");
+	printf("Server:\t\t %s\n", outputBuffer);
+>>>>>>> master
 
 
 	if(strncmp(outputBuffer, "SERVER[0]:",10) == 0){
@@ -130,3 +136,6 @@ void Client::sendMessage(const char* inputBuffer){
 
 }
 
+void Client::init_outputBuffer(){
+	bzero(outputBuffer, 2000);
+}
