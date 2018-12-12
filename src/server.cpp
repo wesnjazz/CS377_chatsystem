@@ -388,6 +388,9 @@ int get_number_of_user_list(){
 void increase_number_of_user_list(){
   num_user_list++;
 }
+void decrease_number_of_user_list(){
+  num_user_list--;
+}
 int get_User_list_index_by_socket(int connfd){  
   /** find an User index from User_list[] by comparing corresponding socket(client) **/
   for(int i=0; i<MAX_CLIENTS; i++){
@@ -413,6 +416,7 @@ int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
   User_list[idx].socket = connfd;
   User_list[idx].room_id = room_id;
   print_User(idx);
+  increase_number_of_user_list();
   return idx;
 }
 // int add_User_in_User_list(User user){  // add an User into User_list[]
@@ -512,11 +516,47 @@ int check_is_this_name_existing(char *nickname){
   }
   return 0;
 }
+int remove_User_from_list(int connfd){
+  int user_idx = get_User_list_index_by_socket(connfd);
+  User_list[user_idx].user_name[0] = '\0';
+  User_list[user_idx].socket = -1;
+  User_list[user_idx].room_id = -1;
+  decrease_number_of_user_list();
+}
+int remove_User_from_belonging_Room(int connfd){
+  int user_idx = get_User_list_index_by_socket(connfd);
+  int room_id = User_list[user_idx].room_id;
+  int sock_idx = find_User_socket_idx_from_Room()
+
+
+typedef struct Room{
+  // Room name
+  char room_name[MAX_ROOM_NAME];
+  // room_id is matched with corresponding index of Room_list[],
+  // e.g., Room number 0 has room_id of 0 and it is at Room_list[0]
+  int room_id;
+  // keep track a number of current clients in a specific Room
+  int num_users;
+  // Client list in a specific Room
+  int socket_list_in_Room[MAX_USER_IN_A_ROOM];
+  // Circular buffer which records all messages from clients in a specific Room
+  char chat_buffer[BUF_MAX_20LINES][BUF_MAX_100CHARS];
+  // HEAD pointer of chat_buffer
+  int chat_buffer_HEAD;
+  // TAIL pointer of chat_buffer
+  int chat_buffer_TAIL;
+} Room;
+
+}
+
+
+
 
 
 
 
 // Intended Space - Don't erase empty lines
+
 
 
 
@@ -1179,7 +1219,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
             return send_roomlist_message(connfd);
     }
     else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
-      char msg_buf[20] = "GoodBye";
+      char msg_buf[20] = "SERVER[0]: GoodBye";
       send_message(connfd, msg_buf);
       // close(connfd);
       return 99;
@@ -1291,6 +1331,7 @@ void chat_system(int connfd){
 
     n = process_message(connfd, message);
     if(n == 99) {
+      remove_User_from_list(connfd);
       close(connfd);
       break;
     }
