@@ -78,7 +78,7 @@ void Client::scripting(char* fileName){
 
   		printf("\n%s: %s\n", getName(),buffer);
       	sendMessage(buffer);
-      	usleep((unsigned int)100000);
+      	usleep((unsigned int)200000);
       	// sleep(2);
       	// sendMessage("\\ROOMS");
 
@@ -99,6 +99,7 @@ void Client::sendMessage(const char* inputBuffer){
 	send(socket_status, inputBuffer, strlen(inputBuffer), 0);
 
 	init_outputBuffer();
+	bzero(outputBuffer, sizeof(outputBuffer));
 	receive_status =recv(socket_status, outputBuffer, BUF_SIZE, 0);
 	if(receive_status<0)
 		throw RECEIVE_EX;
@@ -128,6 +129,7 @@ void Client::sendMessage(const char* inputBuffer){
 		printf("%s\n", whisper); 
 	}
 	else{
+		system("clear");
 		printf("%s\n", outputBuffer);
 	}
 
