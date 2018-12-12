@@ -22,19 +22,28 @@ class Client {
 		Client(int portNum); // constructor to initialize locks and conditional variables
 		void create_socket();
 		void connecting();
-		void sendMessage(char* inputBuffer);
-		string* readFile(string fileName);
+
+		void sendMessage(const char* inputBuffer);
+		string* readFile(char* fileName);
+		void scripting(char* fileName);
+
+
 		void init_outputBuffer();
+
 		
 		int getSocket(){return socket_status;			}
-		int getReceive(){return receive_status;			}
+		// int getReceive(){return receive_status;			}
 		int getConnection(){return connection_status;	}
+		char* getName(){return name;					}
+
 
 	private:
 		int port;
 		int socket_status;
 		int connection_status;
 		int receive_status;
+		int lines=0;
+		char* name="client";
 		char outputBuffer[2000];
 };
 
