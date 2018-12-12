@@ -36,7 +36,7 @@ using namespace std;
 #define MAX_ROOM_NAME 30
 #define MAX_MSG_CHAR 100
 
-#define BUF_MAX_20LINES 20
+#define BUF_MAX_20LINES 35
 #define BUF_MAX_100CHARS 100
 #define BUF_SMALL_300 300
 
@@ -104,6 +104,7 @@ typedef struct sockaddr SA;
 // A lock for the message buffer.
 pthread_mutex_t lock;
 pthread_mutex_t room;
+pthread_mutex_t user;
 
 // We will use this as a simple circular buffer of incoming messages.
 char message_buf[BUF_MAX_20LINES][BUF_MAX_100CHARS];
@@ -115,7 +116,9 @@ int msgi = 0;
 
 // Initialize the message buffer to empty strings.
 void init_entire_message_buf() {
+  pthread_mutex_lock(&lock);
   bzero(entire_message_buf, sizeof(entire_message_buf));
+  pthread_mutex_unlock(&lock);
 }
 int init_chat_buffer_in_Room(int room_id);
 void init_Rooms_Users_Messages(){ 
@@ -201,27 +204,17 @@ int add_title_into_chat_buffer(int room_id, int head){
 }
 int init_chat_buffer_in_Room(int room_id){
   /** initialize Chat_Buffer in a Room by writing zeros **/
+  pthread_mutex_lock(&room);
   for(int i=0; i<BUF_MAX_20LINES; i++){
     bzero(Room_list[room_id].chat_buffer[i], BUF_MAX_100CHARS);
   }
   add_title_into_chat_buffer(room_id, 0); 
   Room_list[room_id].chat_buffer_HEAD = 0;
   Room_list[room_id].chat_buffer_TAIL = 0;
+  pthread_mutex_unlock(&room);
 }
 int get_User_list_index_by_socket(int connfd);
 int add_message_into_chat_buffer(int connfd, int room_id, char *message){
-  /**
-    TAIL++
-    if TAIL > max_index
-      TAIL = 0
-    if TAIL <= HEAD
-      HEAD++
-      if HEAD > max_index
-        HEAD =0
-      HEAD <- title msg
-    buf[TAIL] = msg
-  **/
-
   int tail = Room_list[room_id].chat_buffer_TAIL;
   int head = Room_list[room_id].chat_buffer_HEAD;
   message[BUF_MAX_100CHARS - MAX_USER_NAME - 3]='\0';
@@ -247,12 +240,16 @@ int add_message_into_chat_buffer(int connfd, int room_id, char *message){
     }
     // strcpy(Room_list[room_id].chat_buffer[head], title);
     add_title_into_chat_buffer(room_id, head);
+    pthread_mutex_lock(&room);
     Room_list[room_id].chat_buffer_HEAD = head;
+    pthread_mutex_unlock(&room);
   }
   strcat(prefix, message);
   printf("\tprefix: %s\n", prefix);
   strncpy(Room_list[room_id].chat_buffer[tail], prefix, BUF_MAX_100CHARS-1);
+  pthread_mutex_lock(&room);
   Room_list[room_id].chat_buffer_TAIL = tail;
+  pthread_mutex_unlock(&room);
 }
 void get_chat_buffer(int room_id){
   // printf("\tget_chat_buffer() begin\n");
@@ -349,6 +346,7 @@ void print_sockets(){ // print current connected sockets
   printf("-------------------\n");
 }
 void add_sockets(int connfd){ // add new socket into current socket list. Sockets are filled from left to right
+  pthread_mutex_lock(&lock);
   for(int i=0; i<MAX_CLIENTS; i++){
     if( socket_list[i] != -1) { continue; }
     else {
@@ -356,14 +354,17 @@ void add_sockets(int connfd){ // add new socket into current socket list. Socket
       break;
     }
   }
+  pthread_mutex_unlock(&lock);
 }
 void delete_socket(int connfd){ // find a matching socket and delete it.
+  pthread_mutex_lock(&lock);
   for(int i=0; i<MAX_CLIENTS; i++){
     if( socket_list[i] == connfd) {
       socket_list[i] = -1;
       break;
     }
   }
+  pthread_mutex_unlock(&lock);
 }
 
 
@@ -386,10 +387,14 @@ int get_number_of_user_list(){
   return num_user_list;
 }
 void increase_number_of_user_list(){
+  pthread_mutex_lock(&user);
   num_user_list++;
+  pthread_mutex_unlock(&user);
 }
 void decrease_number_of_user_list(){
+  pthread_mutex_lock(&user);
   num_user_list--;
+  pthread_mutex_lock(&user);
 }
 int get_User_list_index_by_socket(int connfd){  
   /** find an User index from User_list[] by comparing corresponding socket(client) **/
@@ -413,27 +418,14 @@ int find_empty_spot_in_User_list(){
 int create_new_User_at(int idx, int connfd, char *nickname, int room_id){
   if(get_number_of_user_list() > MAX_CLIENTS) { return -1; }
   strcpy(User_list[idx].user_name, nickname);
+  pthread_mutex_lock(&user);
   User_list[idx].socket = connfd;
   User_list[idx].room_id = room_id;
+  pthread_mutex_unlock(&user);
   print_User(idx);
   increase_number_of_user_list();
   return idx;
 }
-// int add_User_in_User_list(User user){  // add an User into User_list[]
-//   int idx = find_empty_spot_in_User_list();
-//   create_new_User_at(idx, user.socket, user.user_name, user.user_id);
-//   return idx;
-//   // int i = 0;
-//   // for(i=0; i<MAX_CLIENTS; i++){
-//   //   if(User_list[i].socket!=-1){  // if this User slot is not empty
-//   //     continue; // check next
-//   //   } else { // this slot is empty
-//   //     User_list[i] = user;  // add the user into User_list[]
-//   //     return i; // successfully added user into User_list and return index
-//   //   }
-//   // }
-//   // return -1; // couldn't find empty slot, or there was an error
-// }
 int find_empty_spot_socket_list_in_Room(int room_id);
 int add_User_in_Room(int user_idx, int room_id){
   /***
@@ -446,33 +438,21 @@ int add_User_in_Room(int user_idx, int room_id){
     return -1;  // there is already MAX users in the room, return error(-1)
   } // there is an empty spot in the Room
   int socket_idx = find_empty_spot_socket_list_in_Room(room_id);
+  pthread_mutex_lock(&room);
   Room_list[room_id].socket_list_in_Room[socket_idx] = User_list[user_idx].socket; // add the socket(client) into the user list of the Room
   Room_list[room_id].num_users++; // increase the number of users in the Room
   User_list[user_idx].room_id = room_id;
-  // int idx = get_User_list_index_by_socket(connfd);  // check if there is an existing User in User_list[] by checking returning value of socket number
-
-  // if (idx != -1) {  // there is an existing User in User_list[] of corresponding socket(client)
-  //   bzero(User_list[idx].user_name, MAX_USER_NAME); // initialize
-  //   strcmp(User_list[idx].user_name, nickname); // update User's name by nickname
-  // } else {    // there is no such socket(client) in User_list[], so create a new User with this socket(client)
-  //   User newUser; // create a new User
-  //   bzero(newUser.user_name, MAX_USER_NAME);  // initialize name
-  //   strcmp(newUser.user_name, nickname);  // update name by nickname
-  //   newUser.socket = connfd;  // match this User with the connected socket(client)
-  //   newUser.room_id = room_id;  // mark the room_id which this User belongs to currently
-  //   add_User_in_User_list(newUser); // add this User of corresponding socket(client) into User_list[]
-  // }
-  // print_Room_list();
+  pthread_mutex_unlock(&room);
   return 1;
 }
 int change_nickname(int idx, char *nickname){
   if (strlen(nickname) > MAX_USER_NAME) { return -1; }
+  pthread_mutex_lock(&user);
   strcpy(User_list[idx].user_name, nickname);
+  pthread_mutex_unlock(&user);
   return 1;
 }
 int check_user_in_which_room(char *nickname){ //check user in which room 
-  //which is /where command.
-  
   for(int i=0;i<MAX_CLIENTS;i++){ //loop whole server ,and return room id. or -1 if not existed.
     char *tempName=User_list[i].user_name;
     if(strcmp(nickname,tempName)==0)//check name if same.
@@ -482,27 +462,8 @@ int check_user_in_which_room(char *nickname){ //check user in which room
   }
   return -1;
 }
-int check_user_id_by_nickname(char *nickname){
-
-}
-const char * check_username_by_socket(int connfd){ //this will get name by socket number // have error on this part.
-
-  printf("connfd is %d",connfd);
-  for(int i=0;i<MAX_CLIENTS;i++){//loop whole server.
-    printf("searching %d" ,i);
-    int tempSocket=User_list[i].socket;//socket of users.
-    printf("socketnumber is %d",tempSocket);
-    if(connfd == tempSocket)//if we find matched socket.
-    {
-      printf("FIND name %s" ,User_list[i].user_name);
-      return User_list[i].user_name;//we return this name or -1 if none-existed.
-    }
-  }
-  return (char *)-1;  // temporary fixed to return char *
-}
 int check_socket_by_username(char *user_name){
   for(int i=0; i<MAX_CLIENTS; i++){
-    // printf("size of User[%d]: %d\n", i, )
     if(User_list[i].user_name[0] != '\0' && strcmp(user_name, User_list[i].user_name) == 0) {
       return User_list[i].socket;
     }
@@ -518,9 +479,11 @@ int check_is_this_name_existing(char *nickname){
 }
 int remove_User_from_list(int connfd){
   int user_idx = get_User_list_index_by_socket(connfd);
+  pthread_mutex_lock(&user);
   User_list[user_idx].user_name[0] = '\0';
   User_list[user_idx].socket = -1;
   User_list[user_idx].room_id = -1;
+  pthread_mutex_unlock(&user);
   decrease_number_of_user_list();
 }
 int find_User_socket_idx_from_Room(int connfd, int old_room_id);
@@ -529,8 +492,10 @@ int remove_User_from_belonging_Room(int connfd){
   int user_idx = get_User_list_index_by_socket(connfd);
   int room_id = User_list[user_idx].room_id;
   int sock_idx = find_User_socket_idx_from_Room(connfd, room_id);
+  pthread_mutex_lock(&room);
   Room_list[room_id].socket_list_in_Room[sock_idx] = -1;
   Room_list[room_id].num_users--;
+  pthread_mutex_lock(&room);
   if(Room_list[room_id].num_users <= 0){
     remove_Room_from_list(room_id);
   }
@@ -564,10 +529,6 @@ int increase_number_of_room_list(){
 int decrease_number_of_room_list(){
   num_room_list--;  
 }
-int get_room_userlist(char *room_name){//printout list of user in this room, can just printout nicknames.
-  //since room id isnot needed.
-  return 0;
-}// not sure why this function still existed.
 int find_empty_spot_in_Room_list(){
   int i = 0;
   for(i=0; i<MAX_ROOM_NUM; i++){
@@ -587,31 +548,12 @@ int create_new_Room(char *room_name){
   pthread_mutex_lock(&room);
   printf("\t[+]creating a room \"%s\".\n", room_name);
   int x = get_number_of_room_list();
-  if(x > MAX_ROOM_NUM){
-    return -1;
-  }
+  if(x > MAX_ROOM_NUM){ return -1; }
   int empty_room_idx = find_empty_spot_in_Room_list();
- // Room initRoom;
- //  initRoom.room_name[0] = '\0';
- //  initRoom.room_id = -1;
- //  initRoom.num_users = 0;
- //  initRoom.socket_list_in_Room[0] = -1;
- //  for(int i=0; i<MAX_ROOM_NUM; i++){
- //    Room_list[i] = initRoom;
- //  }
-
   strcpy(Room_list[empty_room_idx].room_name, room_name);
   Room_list[empty_room_idx].room_id = empty_room_idx;
   Room_list[empty_room_idx].num_users = 0;
 
-  // Room newRoom; // create a temporary Room object
-  // strcpy(newRoom.room_name, room_name); // update its name with room_name
-  // newRoom.room_id = x;  // update its room_id
-  // newRoom.num_users = 0;  // this Room is created, it means there is at least one User inside
-  // newRoom.socket_list_in_Room[0] = connfd;  // add socket(client) into socket_list_in_Room at 0 because it is just created.
-  // int add_User_in_Room(int connfd, char *nickname, int room_id)
-  // newRoom.socket_list_in_Room[0] = connfd;  // add socket(client) into socket_list_in_Room at 0 because it is just created.
-  // Room_list[x] = newRoom; // put this Room into Room_list[], index number and room_id is always matched
   increase_number_of_room_list();  // increate number_of_roomlist
   add_title_into_chat_buffer(empty_room_idx, 0);
   pthread_mutex_unlock(&room);
@@ -628,29 +570,6 @@ int is_room_name_existing(char *room_name){
   printf("\tNo such name of room existing %s\n", room_name);
   return -1;  // there is no room with the same name
 }
-// int leave_room(char *nickname,int room_id){ // this function will let user leave a room.
-//   int tempSocket=-1;//create a temp socket number for compare.
-//   for(int i=0;i<MAX_CLIENTS;i++){ //search who server. loop it.
-//     char *tempName=User_list[i].user_name;//find a user name who in the server.
-//     if(strcmp(nickname,tempName)==0)// if we find this user.
-//     {
-//       tempSocket=User_list[i].socket;//we find this socket and saved in tempsocket.
-//     }
-//   }
-
-//   for(int i=0;i<MAX_ROOM_NUM;i++){//search whole room
-//     if(tempSocket==Room_list[room_id].socket_list_in_Room[i])//if we find this use's socket.
-//     {
-//       Room_list[room_id].socket_list_in_Room[i]=-1;//we will set this socket to -1, which is disconnected.
-//       //im not sure if this will do this job or not ,you may need to check.
-
-//       return 1;//return 1 successed
-//     }
-    
-//   }
-//   return -1;//return -1 if we can not find this user.
-
-// }
 int find_empty_spot_socket_list_in_Room(int room_id){
   if(Room_list[room_id].num_users > MAX_USER_IN_A_ROOM) {
     return -1;
@@ -676,30 +595,32 @@ int remove_Room_from_list(int room_id){
   if(Room_list[room_id].num_users > 0){
     return -1;
   } else {
+    pthread_mutex_lock(&room);
     Room_list[room_id].room_id = -1;
     Room_list[room_id].num_users = 0;
     Room_list[room_id].room_name[0] = '\0';
     for(int i=0; i<MAX_USER_IN_A_ROOM; i++){
       Room_list[room_id].socket_list_in_Room[i] = -1;
     }
+    pthread_mutex_unlock(&room);
     init_chat_buffer_in_Room(room_id);
     decrease_number_of_room_list();
   }  
 }
 int leave_room(int user_idx, int old_room_id, int socket_idx){ // leave the current Room
   printf("[.]Leaving Room\n");
-  // print_Room_list();
   print_Room(old_room_id);
+  pthread_mutex_lock(&room);
   Room_list[old_room_id].socket_list_in_Room[socket_idx] = -1;
   Room_list[old_room_id].num_users--;
-  // User_list[user_idx].room_id = -1;
+  pthread_mutex_unlock(&room);
   if(strcmp(Room_list[old_room_id].room_name, (char *)"Lobby") != 0 && Room_list[old_room_id].num_users <= 0){
     printf("[.]Removing the Room\n");
     remove_Room_from_list(old_room_id);
   }
   // print_Room_list();
 }
-
+int send_message(int connfd, char *message);
 int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create room if room is not existed, and add the user.
   /*** 
     purpose: process the command of "\JOIN nichname roomname"
@@ -726,8 +647,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
 
   bool created = false;
 
-  printf("\texisting room_id: %d\n", room_id);
-  printf("\texisting user_id: %d\n", user_idx);
+  // printf("\texisting room_id: %d\n", room_id);
+  // printf("\texisting user_id: %d\n", user_idx);
 
   char old_room_name[MAX_ROOM_NAME] = "";
   strcpy(old_room_name, Room_list[User_list[user_idx].room_id].room_name);
@@ -751,7 +672,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
       return -2;
     }
     printf("\tchanging nickname from %s to %s\n", User_list[user_idx].user_name, nickname);
-    change_nickname(user_idx, nickname);  // change nickname
+    int ch = change_nickname(user_idx, nickname);  // change nickname
+    if (ch) send_message(connfd, (char *)"SERVER[1]: Your nickname has been changed.");
   }
   // 2. Check if the Room is not existing
   if(room_id < 0){
@@ -769,8 +691,8 @@ int JOIN_Nickname_Room(int connfd, char *nickname, char *room_name){// create ro
   // print_User(user_idx);
   // print_Room(room_id);
   }
-  printf("\told_room_name: %s\n", old_room_name);
-  printf("\tRoom_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
+  // printf("\told_room_name: %s\n", old_room_name);
+  // printf("\tRoom_list[%d].room_name: %s\n", room_id, Room_list[room_id].room_name);
   if(strcmp(Room_list[room_id].room_name, old_room_name) != 0){
     printf("\tgetting into different Room\n");
     // User is trying to enter different Room
@@ -829,40 +751,24 @@ int receive_message(int connfd, char *message) {
 }
 // A wrapper around send to simplify calls.
 int send_message(int connfd, char *message) {
-  // printf("\tsend_message() begin\n");
-  // printf("\tmessage size: %d\n", strlen(message));
-  // printf("\tmessage: %s\n", message);
   return send(connfd, message, strlen(message), 0);
 }
 // This function adds a message that was received to the message buffer.
-// Notice the lock around the message buffer.
-void add_message(char *buf) {
-  pthread_mutex_lock(&lock);
-  strncpy(message_buf[msgi % 20], buf, 80);
-  int len = strlen(message_buf[msgi % 20]);
-  message_buf[msgi % 20][len] = '\0';
-  msgi++;
-  pthread_mutex_unlock(&lock);
-}
 // Destructively modify string to be upper case
-void upper_case(char *s) {
-  while (*s) {
-    *s = toupper(*s);
-    s++;
-  }
-}
 char *token_array[3];// for string to token
 void string_to_token(char buf[]){
+  pthread_mutex_lock(&lock);
   token_array[0] = '\0';
   token_array[1] = '\0';
   token_array[2] = '\0';
   int i = 0;
-    char *p = strtok (buf, " ");
-    while (p != NULL)
-    {
-        token_array[i++] = p;
-        p = strtok (NULL, " ");
-    }
+  char *p = strtok (buf, " ");
+  while (p != NULL)
+  {
+      token_array[i++] = p;
+      p = strtok (NULL, " ");
+  }
+  pthread_mutex_unlock(&lock);
 }
 
 
@@ -893,15 +799,11 @@ int is_Command_message(char *message) {
     return false;
   }
 }
-
 int send_ROOM_message(int connfd) {
   char message[1024] = "ROOM";
   printf("Sending: %s \n", message);
 
   return send_message(connfd, message);
-}
-int send_JOIN_message(int connfd){
-  
 }
 /* Command: \ROOMS */
 int send_roomlist_message(int connfd){
@@ -944,8 +846,6 @@ int send_userlist_message(int connfd) {
       tempRoom_ID=User_list[i].room_id;
     }
   }
-  //we find room_id
-
   for(int i=0;i<MAX_ROOM_NUM;i++){
     int current_socket_in_room=Room_list[tempRoom_ID].socket_list_in_Room[i];
     char *nickname[MAX_USER_NAME];
@@ -958,11 +858,8 @@ int send_userlist_message(int connfd) {
           strcat(message,",");
         }
       }
-
     }
   }
-  
-
   // End the message with a newline and empty. This will ensure that the
   // bytes are sent out on the wire. Otherwise it will wait for further
   // output bytes.
@@ -971,52 +868,6 @@ int send_userlist_message(int connfd) {
 
   return send_message(connfd, message);
 }
-/* Command : \WHERE */
-// int send_where_message(int connfd, char *message){
-// //this should be two jobs: 
-// // 1) "\WHERE" which tells where I am
-// // 2) "\WHERE nickname" which tells where he is. 
-// // a) if a user send "\WHERE name" which that name is his name, then it is same as "\WHERE" and don't need to search himself again
-// //
-// //  if command is not a valid command, then return error
-// //  if 2nd argument is same as his name, then simply call 
-//  // message = (char *)("%s "," Your location room is ");
-  
-//   char buffer[BUF_SMALL_300] = "";
-//   string_to_token(message);
-//   int user_index = -1;
-
-//   if (!token_array[1]){ // if there is no second argument, e.g., \WHERE
-//     printf("checking myself\n");
-//     user_index = get_User_list_index_by_socket(connfd);
-//   } else {  // there is 2nd argument(user name). e.g., \WHERE user_name
-//     printf("check_socket_by_username()\n");
-//     user_index = get_User_list_index_by_socket(check_socket_by_username(token_array[1]));
-//   }
-
-//   bzero(buffer, sizeof(buffer));
-//   printf("user_index:%d\n", user_index);
-//   strcat(buffer, "User ");
-//   if (user_index == -1) {
-//     if(token_array[1]) strcat(buffer, token_array[1]);
-//     strcat(buffer, " does not exist.");
-//     printf("[%s]\n", buffer);
-//   } else {
-//     strcat(buffer, User_list[user_index].user_name);
-//     strcat(buffer, " is at Room[");
-//     strcat(buffer, (char *)User_list[user_index].room_id);
-//     strcat(buffer, "]: ");
-//     strcat(buffer, Room_list[User_list[user_index].room_id].room_name);
-//   }
-//   return send_message(connfd, buffer);
-//   // // char* nickname = (char*)check_username_by_socket(connfd);  // we should know socket number by username rather than to know username by socket becuase the argument is username and nobody knows other's socket number
-//   // // printf("the nickname is %s",nickname);
-//   // // int r_id = check_user_in_which_room(nickname);
-//   // // char *temp_room_name = Room_list[r_id].room_name;
-//   // // printf("the room_id is %d\troom name:%s",r_id, temp_room_name);
-//   // // strcat(message,temp_room_name);
-// }
-
 int send_where_message(int connfd, char *message){
 //this should be two jobs: 
 // 1) "\WHERE" which tells where I am
@@ -1040,39 +891,21 @@ int send_where_message(int connfd, char *message){
   }
 
   bzero(buffer, sizeof(buffer));
-
-  
   strcat(buffer, "User ");
   
   if (user_index == -1) {
-    
     if(token_array[1]) strcat(buffer, token_array[1]);
     strcat(buffer, " does not exist.");
-    
   } else {
-    
     strcat(buffer, User_list[user_index].user_name);
-    
     strcat(buffer, " is at Room[");
-    
-    
-     char temp_room_id[20];
-     sprintf(temp_room_id, "%d", User_list[user_index].room_id);
-   
-    
+    char temp_room_id[20];
+    sprintf(temp_room_id, "%d", User_list[user_index].room_id);
     strcat(buffer, temp_room_id);
-    
     strcat(buffer, "]: ");
-    
     strcat(buffer, Room_list[User_list[user_index].room_id].room_name);
   }
   return send_message(connfd, buffer);
-  // // char* nickname = (char*)check_username_by_socket(connfd);  // we should know socket number by username rather than to know username by socket becuase the argument is username and nobody knows other's socket number
-  // // printf("the nickname is %s",nickname);
-  // // int r_id = check_user_in_which_room(nickname);
-  // // char *temp_room_name = Room_list[r_id].room_name;
-  // // printf("the room_id is %d\troom name:%s",r_id, temp_room_name);
-  // // strcat(message,temp_room_name);
 }
 int send_helplist_message(int connfd) { // this part do not need help list.】
   char message[BUF_MAX_20LINES * BUF_MAX_100CHARS] = "";
@@ -1100,7 +933,6 @@ int send_helplist_message(int connfd) { // this part do not need help list.】
 
   return send_message(connfd, message);
 }
-
 int send_whisper_message(int connfd, int whisper_target, char *message){
   int user_idx = get_User_list_index_by_socket(connfd);
   char whisper_msg[BUF_SMALL_300];
@@ -1132,11 +964,8 @@ int send_chat_message(int connfd, char *message){
 }
 
 int process_message(int connfd, char *message) {//idk if we can use case switch
-  
   if (is_Command_message(message)) {
     printf("Received a Command: ");
-    // Bug: if the command is not made of three words, e.g., just "\JOIN", then this will crash.
-    //      we should deal with those edge cases.
     if(strncmp(message, "\\JOIN",5) == 0){
       printf("%s\n","\\JOIN nickname room" );
       string_to_token(message);//convert to tokens
@@ -1146,7 +975,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
       }
       //token_array[1] is nickname
       //token_array[2] is room name
-      printf("\n[socket%d]Trying to make a Room: %s", connfd, token_array[2]);
+      printf("\n[socket%d]Trying to make a Room: %s\n", connfd, token_array[2]);
       printf("\tNickname: %s\n", token_array[1]);
       // we can safely call JOIN_Nickname_Room() without any considerations here.
       // the function will deal with any cases.
@@ -1189,52 +1018,36 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
         return send_message(connfd, msg_buf);
       }
       return send_message(connfd, msg_buf);
-      // if(join <= -1){
-      //   strcpy(msg_buf, (char *)"[-]Error creating a room ");
-      //   strcat(msg_buf, token_array[2]);
-      //   return send_message(connfd, msg_buf);
-      // }
-      // if(join == 2 || strcmp(token_array[2], (char *)"Lobby") == 0) {
-      //   strcpy(msg_buf, (char *)"[+]Entering ");
-      // } else {
-      //   strcpy(msg_buf, (char *)"[+]Created a Room ");
-      // }
-      // strcat(msg_buf, token_array[2]);
     }
-    else if(strcmp(message, "\\ROOMS") == 0){//this part is fine
+    else if(strcmp(message, "\\ROOMS") == 0){
             printf("%s\n","\\ROOMS" );
-            // printf("%s\n", get_room_list());
             print_Room_list();
             return send_roomlist_message(connfd);
     }
-    else if(strcmp(message, "\\LEAVE") == 0){//this part is fine
+    else if(strcmp(message, "\\LEAVE") == 0){
       char msg_buf[20] = "SERVER[0]: GoodBye";
       send_message(connfd, msg_buf);
       // close(connfd);
       return 99;
-      // return send_message(connfd, message);
     }
     else if(strncmp(message, "\\WHERE", 5) == 0){
       printf("%s\n","\\WHERE" );
       return send_where_message(connfd, message);
-
     }
-    else if(strcmp(message, "\\WHO") == 0){//this part is fine
+    else if(strcmp(message, "\\WHO") == 0){
           printf("%s\n","\\WHO" );
           return send_userlist_message(connfd);
     }
-    else if(strcmp(message, "\\HELP") == 0){//this part is fine
+    else if(strcmp(message, "\\HELP") == 0){
           printf("%s\n","it is \\HELP" );
           return send_helplist_message(connfd);
     }
     else if(strncmp(message,"\\CHANGENAME", 10)==0){
           printf("%s\n","it is \\ChangeName" );
-          
           string_to_token(message);
           if(!token_array[1]){
             printf("\n 1 arguments");
             return send_message(connfd, (char *)"command not recognized,make sure you have 2 arguments");
-          
           }
           else{
           printf("\n 2 arguments");
@@ -1242,7 +1055,6 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           int room_id=User_list[idx].room_id;
           char * room_name;
           room_name =(char*) Room_list[room_id].room_name;
-          
           printf(" user idx is %d\n", idx);
           printf(" user room id is %d\n", room_id);
           printf(" user name is %s\n", token_array[1]);
@@ -1250,8 +1062,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           JOIN_Nickname_Room(connfd,token_array[1],room_name);
           }
         }
-
-    else if(strcmp(message, "\\TIME") == 0){//this part is fine
+    else if(strcmp(message, "\\TIME") == 0){
           time_t rawtime;
           struct tm * timeinfo;
 
@@ -1263,7 +1074,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           strcat(msg_buf,asctime (timeinfo));
           send_message(connfd, msg_buf);
     }
-    else if(strncmp(message, "\\KICK",4) == 0){//this part is fine
+    else if(strncmp(message, "\\KICK",4) == 0){
           string_to_token(message);
           if(!token_array[1]){
             printf("\n 1 arguments");
@@ -1277,8 +1088,6 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
           process_message(tempSocket, message);
         }
     }
-
-
     // else if(strcmp(message, "\\nickname message") == 0){//this part will be in a same room and whisper by nickname
       //if you can not find the nickname then show it user not existed. some thing like this. much easy.
     // }
@@ -1322,7 +1131,7 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
         printf("[+]User found at [%d]: %s\n", idx, User_list[idx].user_name);
         return send_whisper_message(connfd, whisper_target, mesg_buf);
       } else {
-        // char tempMessage[MAX_MSG_CHAR + 100] ="[-]Command not recognized\n";//this part is fine
+        // char tempMessage[MAX_MSG_CHAR + 100] ="[-]Command not recognized\n";
         char tempMessage[MAX_MSG_CHAR + 100];
         bzero(tempMessage, sizeof(tempMessage));
         if (strlen(mesg_buf) > 0) {
@@ -1340,11 +1149,9 @@ int process_message(int connfd, char *message) {//idk if we can use case switch
     }
     return send_ROOM_message(connfd);
   } 
-  else {//this part is fine
+  else {
     printf("Server sending chat messages to clients.\n");
     return send_chat_message(connfd, message);
-    // printf("Server responding with echo response.\n");
-    // return send_message(connfd, message);
   }
 }
 
@@ -1447,6 +1254,7 @@ int main(int argc, char *argv[]){// we need help function before we call the thr
   // Initialize the message buffer lock.
   pthread_mutex_init(&lock, NULL);
   pthread_mutex_init(&room, NULL);
+  pthread_mutex_init(&user, NULL);
 
   // The port number for this server.
   int port = atoi(argv[1]);

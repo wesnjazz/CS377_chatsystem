@@ -99,6 +99,7 @@ void Client::sendMessage(const char* inputBuffer){
 	send(socket_status, inputBuffer, strlen(inputBuffer), 0);
 
 	init_outputBuffer();
+	bzero(outputBuffer, sizeof(outputBuffer));
 	receive_status =recv(socket_status, outputBuffer, BUF_SIZE, 0);
 	if(receive_status<0)
 		throw RECEIVE_EX;
@@ -128,6 +129,7 @@ void Client::sendMessage(const char* inputBuffer){
 		printf("%s\n", whisper); 
 	}
 	else{
+		system("clear");
 		printf("%s\n", outputBuffer);
 	}
 
